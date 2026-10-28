@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { ArrowLeft, Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { Mark, ThemeControl } from '@/components/layout/Shell.jsx';
 import { WebThreads } from '@/components/WebThreads.jsx';
@@ -20,26 +20,42 @@ export function Login({ mode = 'login' }) {
   const [show, setShow] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [retrySeconds, setRetrySeconds] = useState(0);
+  const [fieldError, setFieldError] = useState(null);
   const signupMode = mode === 'signup';
+
+  useEffect(() => {
+    if (retrySeconds <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setRetrySeconds((seconds) => Math.max(0, seconds - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [retrySeconds]);
 
   const submit = async (event) => {
     event.preventDefault();
     setError(null);
+    setFieldError(null);
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setFieldError('email');
       setError('Enter an email address like name@example.com.');
       return;
     }
     if (password.length < MIN_PASSWORD) {
+      setFieldError('password');
       setError(`Passwords are at least ${MIN_PASSWORD} characters.`);
       return;
     }
     setBusy(true);
     try {
       await (signupMode ? signup : login)({ email: email.trim(), password });
-      navigate('/projects');
+      const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+      navigate(returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/projects');
     } catch (err) {
+      setRetrySeconds(err.retryAfterSec ?? 0);
       setError(
-        err.retryAfterSec ? `${err.message} Try again in ${err.retryAfterSec} s.` : err.message,
+        signupMode ? err.message : err.retryAfterSec ? err.message : 'Invalid email or password.',
       );
     } finally {
       setBusy(false);
@@ -67,6 +83,11 @@ export function Login({ mode = 'login' }) {
               ? 'An account keeps your scans in Projects, unlocks crawls and login-state scans, and lets you share reports.'
               : 'Sign in to see your projects, crawl a site and share reports.'}
           </p>
+          {!signupMode && new URLSearchParams(window.location.search).has('expired') && (
+            <p role="status" className="mt-4 rounded-md border border-moderate p-3 text-sm">
+              Your session expired. Sign in again to continue.
+            </p>
+          )}
           <form
             onSubmit={submit}
             className="mt-8 space-y-5"
@@ -84,9 +105,15 @@ export function Login({ mode = 'login' }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                aria-invalid={Boolean(error) || undefined}
+                aria-invalid={fieldError === 'email' || undefined}
+                aria-describedby={fieldError === 'email' ? `${uid}-email-error` : undefined}
                 className="mt-2 min-h-11 w-full rounded-md border border-input bg-surface px-3 text-sm"
               />
+              {fieldError === 'email' && (
+                <p id={`${uid}-email-error`} className="mt-1 text-sm text-critical">
+                  Enter a valid email address.
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="account-password" className="block text-base font-medium">
@@ -101,9 +128,15 @@ export function Login({ mode = 'login' }) {
                   minLength={MIN_PASSWORD}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  aria-describedby={`${uid}-hint`}
+                  aria-describedby={`${uid}-hint${fieldError === 'password' ? ` ${uid}-password-error` : ''}`}
+                  aria-invalid={fieldError === 'password' || undefined}
                   className="min-h-11 w-full rounded-md border border-input bg-surface pl-3 pr-20 text-sm"
                 />
+                {fieldError === 'password' && (
+                  <p id={`${uid}-password-error`} className="mt-1 text-sm text-critical">
+                    Passwords are at least {MIN_PASSWORD} characters.
+                  </p>
+                )}
                 <button
                   type="button"
                   className="absolute inset-y-1 right-1 inline-flex items-center gap-1.5 rounded px-2.5 text-sm text-link hover:bg-raised"
@@ -129,11 +162,22 @@ export function Login({ mode = 'login' }) {
                 {error}
               </p>
             )}
-            <Button type="submit" disabled={busy} className="w-full min-h-11">
+            <Button type="submit" disabled={busy || retrySeconds > 0} className="w-full min-h-11">
               {busy && <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />}
-              {busy ? 'Working…' : signupMode ? 'Create account' : 'Sign in'}
+              {busy
+                ? 'Working…'
+                : retrySeconds > 0
+                  ? `Try again in ${retrySeconds} seconds`
+                  : signupMode
+                    ? 'Create account'
+                    : 'Sign in'}
             </Button>
           </form>
+          {!signupMode && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Forgot password? Not available yet. There is no password reset or email verification.
+            </p>
+          )}
           <p className="mt-6 text-sm">
             {signupMode ? (
               <>

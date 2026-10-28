@@ -1,4 +1,4 @@
-import { Check, Minus } from 'lucide-react';
+﻿import { Check, Minus } from 'lucide-react';
 
 const fmt = (n) => (n == null ? '—' : new Intl.NumberFormat().format(n));
 
@@ -10,28 +10,11 @@ const FEATURES = [
   ['Projects and saved scans', false, true, true],
   ['Revocable share links', false, true, true],
 ];
-
-const COMMANDS = [
-  {
-    title: 'Turn quotas on',
-    why: 'Quotas are off by default so local testing is never blocked. Meters still count while they are off.',
-    code: '# .env\nQUOTAS_ENABLED=true\n# then restart: npm run dev',
-  },
-  {
-    title: 'Make someone Pro (any store)',
-    why: 'Emails listed here are Pro the next time they sign up or sign in. Works with the memory store.',
-    code: '# .env\nPRO_EMAILS=owner@example.com,teammate@example.com',
-  },
-  {
-    title: 'Change a plan in MongoDB',
-    why: 'For accounts that already exist when STORE=mongo. There is no admin screen.',
-    code: 'npm run plan:pro -- user@example.com pro\nnpm run plan:pro -- user@example.com free',
-  },
-  {
-    title: 'Adjust the limits',
-    why: 'Every limit is an environment variable. Pro token caps must stay above Free, or the API refuses to start.',
-    code: 'FREE_SCANS_DAY=30\nFREE_PAGES_DAY=100\nFREE_TOKENS_DAY=50000\nFREE_CRAWL_PAGES=5\nPRO_SCANS_DAY=300\nPRO_PAGES_DAY=1000\nPRO_TOKENS_DAY=300000\nPRO_CRAWL_PAGES=10\nLOGGED_OUT_SCANS_DAY=100\nLLM_TOKEN_DAILY_CEILING=0   # 0 = no server-wide ceiling',
-  },
+const PRICING = [
+  ['Free', '$0', 'Illustrative', 'HTML + one URL; local history'],
+  ['Pro', '$19 / mo (₹1,499)', 'Illustrative', 'Saved projects, crawls and login-state scans'],
+  ['Team', '$79 / mo for 5 seats (₹5,999)', 'Illustrative', 'Shared workflow (hypothesis)'],
+  ['Enterprise', 'Custom, from ~$500 / mo', 'Illustrative', 'Enterprise support (hypothesis)'],
 ];
 
 export function Business({ health }) {
@@ -67,7 +50,7 @@ export function Business({ health }) {
             Quotas {quotasOn ? 'on: limits are enforced' : 'off: limits are shown, not enforced'}
           </p>
         </div>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[36rem] border-collapse text-sm">
             <caption className="sr-only">Daily limits by plan</caption>
             <thead>
@@ -122,6 +105,52 @@ export function Business({ health }) {
             </tbody>
           </table>
         </div>
+        <ul className="mt-4 grid gap-3 md:hidden">
+          {rows.map(([name, out, free, pro]) => (
+            <li key={name} className="rounded-lg border bg-background p-3">
+              <h3 className="font-semibold">{name}</h3>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                <span>
+                  Signed out
+                  <br />
+                  <b>{out == null ? '—' : fmt(out)}</b>
+                </span>
+                <span>
+                  Free
+                  <br />
+                  <b>{fmt(free)}</b>
+                </span>
+                <span>
+                  Pro
+                  <br />
+                  <b>{fmt(pro)}</b>
+                </span>
+              </div>
+            </li>
+          ))}
+          {FEATURES.map(([name, out, free, pro]) => (
+            <li key={name} className="rounded-lg border bg-background p-3">
+              <h3 className="font-medium">{name}</h3>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                <span>
+                  Signed out
+                  <br />
+                  <b>{out ? 'Included' : 'Not included'}</b>
+                </span>
+                <span>
+                  Free
+                  <br />
+                  <b>{free ? 'Included' : 'Not included'}</b>
+                </span>
+                <span>
+                  Pro
+                  <br />
+                  <b>{pro ? 'Included' : 'Not included'}</b>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
         <p className="mt-3 text-base leading-7 text-muted-foreground">
           Daily counters reset at midnight UTC. With quotas off, every account crawls up to{' '}
           {fmt(health?.crawl?.maxPages)} pages, {fmt(health?.crawl?.maxDepth)} clicks deep. The
@@ -130,33 +159,34 @@ export function Business({ health }) {
         </p>
       </section>
 
-      <section aria-labelledby="commands" className="rounded-xl border bg-surface p-5 sm:p-6">
-        <h2 id="commands" className="text-lg font-semibold">
-          How to control plans
-        </h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {COMMANDS.map((c) => (
-            <div key={c.title} className="min-w-0 rounded-lg border bg-background p-4">
-              <h3 className="text-sm font-semibold">{c.title}</h3>
-              <p className="mt-1 text-base leading-7 text-muted-foreground">{c.why}</p>
-              <pre className="mt-3 min-w-0 max-w-full overflow-x-auto rounded-md border bg-surface p-3 font-mono text-[13px] leading-6">
-                <code>{c.code}</code>
-              </pre>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="problem-h" className="rounded-xl border bg-surface p-5 sm:p-6">
           <h2 id="problem-h" className="text-lg font-semibold">
             Problem
           </h2>
           <p className="mt-2 text-base leading-7">
-            95.9% of the top million home pages still fail automated WCAG checks (WebAIM Million
-            2026). Scanners hand developers a list of rule IDs. Overlay widgets promise compliance
-            without changing the source — the FTC fined accessiBe $1 million for that claim. Teams
-            without an accessibility specialist stall at the report.
+            In its February 2026 sample, WebAIM found detectable WCAG 2 failures on 95.9% of the top
+            million home pages. Automated results are only part of accessibility review. The FTC's
+            final order against accessiBe required a $1 million payment and restricted unsupported
+            claims that automated tools make websites compliant.{' '}
+            <a
+              className="text-link underline"
+              href="https://webaim.org/projects/million/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              WebAIM 2026 report
+            </a>{' '}
+            ·{' '}
+            <a
+              className="text-link underline"
+              href="https://www.ftc.gov/news-events/news/press-releases/2025/04/ftc-approves-final-order-requiring-accessibe-pay-1-million"
+              target="_blank"
+              rel="noreferrer"
+            >
+              FTC final order
+            </a>
+            .
           </p>
         </section>
         <section aria-labelledby="solution-h" className="rounded-xl border bg-surface p-5 sm:p-6">
@@ -170,12 +200,61 @@ export function Business({ health }) {
           </p>
         </section>
       </div>
+      <section aria-labelledby="how-h" className="rounded-xl border bg-surface p-5 sm:p-6">
+        <h2 id="how-h" className="text-lg font-semibold">
+          How it works
+        </h2>
+        <ol className="mt-3 grid gap-3 text-base leading-7 sm:grid-cols-3">
+          <li className="rounded-lg border bg-background p-4">
+            <span className="font-semibold">1. Scan</span>
+            <br />
+            Run checks against a rendered page or crawl the same host.
+          </li>
+          <li className="rounded-lg border bg-background p-4">
+            <span className="font-semibold">2. Review</span>
+            <br />
+            Read grouped findings and inspect proposed code changes.
+          </li>
+          <li className="rounded-lg border bg-background p-4">
+            <span className="font-semibold">3. Verify</span>
+            <br />
+            Apply selected fixes and rerun automated checks on the patched copy.
+          </li>
+        </ol>
+        <a
+          href="/signup"
+          className="mt-5 inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground no-underline"
+        >
+          Create an account
+        </a>
+      </section>
+
+      <section aria-labelledby="usp-h" className="rounded-xl border bg-surface p-5 sm:p-6">
+        <h2 id="usp-h" className="text-lg font-semibold">What AccessFix adds to an automated scan</h2>
+        <div className="mt-3 hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[32rem] border-collapse text-sm">
+            <caption className="sr-only">AccessFix compared with a findings-only scan</caption>
+            <thead><tr className="border-b text-left text-muted-foreground"><th className="py-2 pr-3">Step</th><th className="py-2 pr-3">AccessFix</th><th className="py-2">Findings-only scan</th></tr></thead>
+            <tbody>
+              <tr className="border-b"><th scope="row" className="py-2 pr-3 text-left">Understand</th><td className="py-2 pr-3">Grouped findings in plain language</td><td className="py-2">Automated findings</td></tr>
+              <tr className="border-b"><th scope="row" className="py-2 pr-3 text-left">Change</th><td className="py-2 pr-3">Reviewable HTML/CSS patches where supported</td><td className="py-2">Not included in this workflow</td></tr>
+              <tr><th scope="row" className="py-2 pr-3 text-left">Check result</th><td className="py-2 pr-3">Re-scan the patched copy for automated regressions</td><td className="py-2">Not included in this workflow</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul className="mt-3 grid gap-3 sm:hidden">
+          <li className="rounded-lg border bg-background p-3"><h3 className="font-semibold">Understand</h3><p className="mt-1 text-sm">AccessFix: grouped findings in plain language</p><p className="mt-1 text-sm text-muted-foreground">Findings-only: automated findings</p></li>
+          <li className="rounded-lg border bg-background p-3"><h3 className="font-semibold">Change</h3><p className="mt-1 text-sm">AccessFix: reviewable HTML/CSS patches where supported</p><p className="mt-1 text-sm text-muted-foreground">Findings-only: not included in this workflow</p></li>
+          <li className="rounded-lg border bg-background p-3"><h3 className="font-semibold">Check result</h3><p className="mt-1 text-sm">AccessFix: re-scan patched copy for automated regressions</p><p className="mt-1 text-sm text-muted-foreground">Findings-only: not included in this workflow</p></li>
+        </ul>
+        <p className="mt-3 text-sm text-muted-foreground">Automated re-checks do not certify a page or replace disabled-person testing.</p>
+      </section>
 
       <section aria-labelledby="pricing-h" className="rounded-xl border bg-surface p-5 sm:p-6">
         <h2 id="pricing-h" className="text-lg font-semibold">
           Pricing (hypothesis)
         </h2>
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <caption className="mb-2 text-left text-sm text-muted-foreground">
               Pricing hypothesis. This table is not the quota the server enforces.
@@ -197,17 +276,7 @@ export function Business({ health }) {
               </tr>
             </thead>
             <tbody>
-              {[
-                ['Free', '$0', '20 / mo', 'HTML + one URL; last 3 scans'],
-                ['Pro', '$19 / mo (₹1,499)', '500 / mo', 'Saved projects, unbranded report'],
-                ['Team', '$79 / mo for 5 seats (₹5,999)', '3,000 pooled', 'GitHub Action + API'],
-                [
-                  'Enterprise',
-                  'Custom, from ~$500 / mo',
-                  'Contracted',
-                  'Self-hosted runner, SSO, DPA',
-                ],
-              ].map((row) => (
+              {PRICING.map((row) => (
                 <tr key={row[0]} className="border-b align-top last:border-b-0">
                   <th scope="row" className="py-2.5 pr-3 font-semibold">
                     {row[0]}
@@ -222,6 +291,17 @@ export function Business({ health }) {
             </tbody>
           </table>
         </div>
+        <ul className="mt-3 grid gap-3 sm:hidden">
+          {PRICING.map(([tier, price, scans, notes]) => (
+            <li key={tier} className="rounded-lg border bg-background p-3">
+              <h3 className="font-semibold">{tier}</h3>
+              <p className="mt-1 text-sm">
+                {price} · {scans}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{notes}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">

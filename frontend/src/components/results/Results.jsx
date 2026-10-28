@@ -10,7 +10,7 @@ import { updateHistory } from '@/lib/historyStore.js';
 import { Link } from '@/lib/Link.jsx';
 import { visualOn } from '@/lib/flags.js';
 import { buildPreviewModel, scrollIssueIntoPane } from '@/lib/markLayout.js';
-import { applicableRepairs, scoreDisclaimer } from '@/lib/score.js';
+import { applicableRepairs, bandOf, scoreDisclaimer } from '@/lib/score.js';
 import { scanTarget, standardLabel, targetNote } from '@/lib/target.js';
 import { SEVERITIES, groupByRule } from '@/lib/severity.js';
 import { ChecksPanel } from './ChecksPanel.jsx';

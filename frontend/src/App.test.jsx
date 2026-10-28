@@ -200,13 +200,21 @@ describe('scan flow', () => {
     await screen.findByText('2 WCAG issues');
     const issues = screen.getByRole('region', { name: 'Issues' });
     const groups = within(issues).getAllByRole('article');
-    expect(groups.map((g) => within(g).getByRole('heading').textContent)).toEqual([
+    expect(groups.map((g) => within(g).getByRole('heading', { level: 3 }).textContent)).toEqual([
       'image-alt title',
       'color-contrast title',
     ]);
     expect(within(groups[0]).getByText('2 elements')).toBeInTheDocument();
     expect(within(groups[0]).getByText('Critical')).toBeInTheDocument();
-    expect(within(groups[0]).getByText(/Who it affects:/)).toBeInTheDocument();
+    expect(within(groups[0]).getAllByRole('button', { name: 'Show on page' }).length).toBeGreaterThan(0);
+    const issueDetails = within(groups[0]).getByText('Issue details and affected elements').closest('details');
+    expect(issueDetails).not.toHaveAttribute('open');
+    fireEvent.click(within(groups[0]).getByText('Issue details and affected elements'));
+    expect(issueDetails).toHaveAttribute('open');
+    expect(within(groups[0]).getByText('Who it affects')).toBeInTheDocument();
+    expect(within(groups[0]).getByText('What is broken')).toBeInTheDocument();
+    expect(within(groups[0]).getByText('How we fix it')).toBeInTheDocument();
+    expect(within(groups[0]).getByText('Mark 1')).toBeInTheDocument();
     expect(
       within(groups[0]).getByRole('link', { name: /1\.1\.1 Non-text Content · A/ }),
     ).toHaveAttribute('href', 'https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html');
@@ -233,7 +241,9 @@ describe('scan flow', () => {
     renderApp();
     await pasteAndScan();
     const manual = await screen.findByRole('region', { name: 'Needs manual review (1)' });
-    expect(within(manual).getByText('Contrast unclear')).toBeInTheDocument();
+    const manualDetails = within(manual).getByText('Issue details and affected elements').closest('details');
+    if (!manualDetails.open) fireEvent.click(within(manual).getByText('Issue details and affected elements'));
+    expect(within(manual).getAllByText('Contrast unclear').length).toBeGreaterThan(0);
     expect(within(manual).getByText('Needs manual review')).toBeInTheDocument();
     const advisory = screen.getByRole('region', { name: 'Advisory (1)' });
     expect(within(advisory).getByRole('list', { name: 'Heading outline' })).toBeInTheDocument();
@@ -371,7 +381,7 @@ describe('error states', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Explain this score'));
     expect(screen.getByText(/round\(100 × \(1 − 40 \/ 105\)\) = 62/)).toBeInTheDocument();
-    expect(screen.getByText('image-alt')).toBeInTheDocument();
+    expect(screen.getAllByText('image-alt').length).toBeGreaterThan(0);
   });
 });
 

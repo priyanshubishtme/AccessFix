@@ -1,7 +1,8 @@
-import { ExternalLink, Eye, Sparkles, Users } from 'lucide-react';
+import { Copy, ExternalLink, Eye, Sparkles } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge.jsx';
 import { Button } from '@/components/ui/button.jsx';
-import { fixStatus, oneLine } from '@/lib/markLayout.js';
+import { oneLine } from '@/lib/markLayout.js';
 import { severityOf } from '@/lib/severity.js';
 import { RepairCard } from './RepairCard.jsx';
 
@@ -78,13 +79,16 @@ export function IssueGroup({
   onSelect,
   onSelectGroup,
 }) {
+  const [copiedId, setCopiedId] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const { first, items } = group;
   const n = items.length;
   const hasRepairs = items.some((v) => repairsByViolation[v.id]);
+  const status = items.map((v) => repairsByViolation[v.id]?.status).find((s) => s === 'verified' || s === 'failed' || s === 'regressed');
   const highlighted = items.some((v) => highlightIds.includes(v.id) || v.id === activeId);
   const numbers = items.map((v) => numberById[v.id]).filter((n) => n != null);
   const elements = (
-    <ul className="mt-2 space-y-3">
+    <ul className="mt-2 space-y-2">
       {items.map((v) => {
         const mark = marksById[v.id];
         return (
@@ -94,38 +98,25 @@ export function IssueGroup({
             tabIndex={-1}
             className={`rounded-md bg-surface p-3 ${highlightIds.includes(v.id) ? 'ring-2 ring-primary' : ''}`}
           >
-            {numberById[v.id] != null && (
-              <button
-                type="button"
-                className="mb-2 min-h-10 rounded-md border px-2 text-sm"
-                aria-pressed={highlightIds.includes(v.id)}
-                onClick={() => onSelect?.(v.id)}
-              >
-                Mark {numberById[v.id]}
-              </button>
-            )}
-            {mark?.place === 'offscreen' && (
-              <p className="mb-2 text-sm text-muted-foreground">
-                This element was outside the screenshot.
-              </p>
-            )}
-            {mark?.place === 'frame' && (
-              <p className="mb-2 text-sm text-muted-foreground">
-                This element is inside another frame, so it has no pin.
-              </p>
-            )}
-            <p className="break-words text-base leading-7 text-muted-foreground">
-              Selector:{' '}
-              <code className="font-mono text-foreground">{v.node.target.join(' → ')}</code>
-            </p>
-            <pre className="mt-2 overflow-x-auto rounded border bg-background p-2 font-mono text-xs">
-              <code>{v.node.html}</code>
-            </pre>
-            {v.node.failureSummary && (
-              <p className="mt-2 whitespace-pre-line text-base leading-7 text-muted-foreground">
-                {v.node.failureSummary}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium">{numberById[v.id] != null ? `Mark ${numberById[v.id]}` : 'Page element'}</span>
+              <code className="rounded bg-raised px-1.5 py-0.5">{v.node.html.match(/^<([\w-]+)/)?.[1] ?? 'element'}</code>
+              <code className="min-w-0 flex-1 break-all text-muted-foreground">{v.node.target.join(' → ')}</code>
+              {onSelect && numberById[v.id] != null && (
+              <Button variant="outline" size="sm" aria-pressed={highlightIds.includes(v.id)} onClick={() => { setExpanded(true); onSelect(v.id); }}>Show on page</Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={async () => {
+                try { await navigator.clipboard.writeText(v.node.target.join(' ')); setCopiedId(v.id); }
+                catch { setCopiedId(null); }
+              }}><Copy aria-hidden="true" className="size-3.5" />{copiedId === v.id ? 'Copied' : 'Copy selector'}</Button>
+            </div>
+            {mark?.place === 'offscreen' && <p className="mt-1 text-xs text-muted-foreground">Outside the screenshot.</p>}
+            {mark?.place === 'frame' && <p className="mt-1 text-xs text-muted-foreground">Inside another frame; no pin is available.</p>}
+            {v.node.failureSummary && <p className="mt-2 text-sm text-muted-foreground">{v.node.failureSummary}</p>}
+            <details className="mt-2">
+              <summary className="min-h-9 cursor-pointer text-sm text-link">Element HTML</summary>
+              <pre className="mt-1 overflow-x-auto rounded border bg-background p-2 font-mono text-xs"><code>{v.node.html}</code></pre>
+            </details>
           </li>
         );
       })}
@@ -153,98 +144,37 @@ export function IssueGroup({
   );
 
   return (
-    <article
-      className={`rounded-lg border bg-background p-4 ${highlighted ? 'ring-2 ring-primary' : ''}`}
-      aria-labelledby={`issue-title-${first.id}`}
-    >
+    <article className={`rounded-lg border bg-background p-4 ${highlighted ? 'ring-2 ring-primary' : ''}`}>
       <div className="flex flex-wrap items-center gap-2">
         <SeverityBadge impact={group.impact} manual={manual} />
-        <span className="text-sm text-muted-foreground">
-          {n} {n === 1 ? 'element' : 'elements'}
-        </span>
-        {first.wcag?.level ? (
-          <span className="text-sm text-muted-foreground">{first.wcag.level}</span>
-        ) : null}
-        {onSelectGroup && numbers.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto"
-            aria-pressed={items.every((item) => highlightIds.includes(item.id))}
-            onClick={() => onSelectGroup(items.map((item) => item.id))}
-          >
-            Highlight marks
-          </Button>
-        )}
-        {onFix && !manual && !hasRepairs && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto"
-            onClick={() => onFix(items.map((v) => v.id))}
-            disabled={fixing}
-          >
-            <Sparkles aria-hidden="true" className="size-3.5" />
-            {fixing ? 'Finding fixes…' : 'Fix'}
-          </Button>
-        )}
+        <span className="text-sm text-muted-foreground">{n} {n === 1 ? 'element' : 'elements'}</span>
+        <Badge className={status === 'verified' ? 'border-verified text-verified' : status === 'failed' || status === 'regressed' ? 'border-critical text-critical' : 'border-border text-muted-foreground'}>{manual ? 'Needs review' : status === 'verified' ? 'Fixed (verified)' : status ? 'Not fixed (still failing)' : hasRepairs ? 'Fix available' : 'Needs review'}</Badge>
+        {onFix && !manual && !hasRepairs && <Button variant="outline" size="sm" className="ml-auto" onClick={() => onFix(items.map((v) => v.id))} disabled={fixing}><Sparkles aria-hidden="true" className="size-3.5" />{fixing ? 'Finding fixes…' : 'Suggest fix'}</Button>}
       </div>
-      {numbers.length > 0 && (
-        <p className="mt-2 text-sm">
-          {numbers.length === 1 ? 'Mark' : 'Marks'} {numbers.join(', ')}
-        </p>
-      )}
-      <h3
-        id={`issue-title-${first.id}`}
-        className="mt-2 max-w-[65ch] text-base font-semibold leading-6"
-      >
-        {first.title}
-      </h3>
-      <p className="mt-2 flex items-start gap-1.5 text-base leading-7">
-        <Users aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-        <span className="max-w-[65ch]">
-          <span className="font-medium">Who it affects:</span> {first.whoItAffects}
-        </span>
-      </p>
-      {oneLine(first.explanation) && oneLine(first.explanation) !== first.title && (
-        <p className="mt-2 max-w-[65ch] text-base leading-7">
-          <span className="font-medium">Why it matters:</span> {first.explanation}
-        </p>
-      )}
-      <p className="mt-2 max-w-[65ch] text-base leading-7">
-        <span className="font-medium">How we fix it:</span>{' '}
-        {manual
-          ? `Check by hand. ${oneLine(first.explanation) || 'A person needs to look at this.'} Not applied yet.`
-          : fixStatus(first.ruleId, items.map((v) => repairsByViolation[v.id]).find(Boolean))}
-      </p>
-
-      <details
-        className="mt-3"
-        ref={(node) => {
-          if (node && highlighted) node.open = true;
-        }}
-      >
-        <summary className="min-h-10 cursor-pointer text-sm font-medium text-link">Details</summary>
-        <div className="mt-2">
-          <div className="mt-2">
-            <WcagChips refs={first.wcag.refs} />
-          </div>
-          {elements}
-          {first.helpUrl && (
-            <a
-              href={first.helpUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex min-h-10 items-center gap-1 text-sm text-link underline"
-            >
-              Rule reference: {first.ruleId}
-              <ExternalLink aria-hidden="true" className="size-3" />
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
-          )}
+      <h3 id={`issue-title-${first.id}`} className="mt-2 max-w-[65ch] text-base font-semibold leading-6">{first.title}</h3>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        {numbers.length > 0 && <span className="text-muted-foreground">{numbers.length === 1 ? `Mark ${numbers[0]}` : `Marks ${numbers.join(', ')}`}</span>}
+        {onSelect && numbers.length > 0 && <Button variant="outline" size="sm" onClick={() => { setExpanded(true); onSelectGroup ? onSelectGroup(items.map((item) => item.id)) : onSelect(items[0].id); }}>Show on page</Button>}
+      </div>
+      <details className="mt-3" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
+        <summary className="min-h-10 cursor-pointer text-sm font-medium text-link">Issue details and affected elements</summary>
+        <div className="mt-2 space-y-3">
+          <p className="text-sm leading-6"><span className="text-xs text-muted-foreground">What is broken</span><br />{oneLine(first.title)}</p>
+          <p className="text-sm leading-6"><span className="text-xs text-muted-foreground">Who it affects</span><br />{oneLine(first.whoItAffects)}</p>
+          <p className="text-sm leading-6"><span className="text-xs text-muted-foreground">Why it matters</span><br />{oneLine(first.explanation) || first.title}</p>
+          <div className="text-sm leading-6"><span className="text-xs text-muted-foreground">How we fix it</span><br /><Badge className="mr-2 border-border text-muted-foreground">{manual ? 'Manual' : items.some((v) => repairsByViolation[v.id]?.strategy === 'llm') ? 'Draft to review' : hasRepairs ? 'Automatic' : 'Manual'}</Badge>{manual ? 'A person needs to review this.' : hasRepairs ? 'Review the proposed patch below before applying it.' : 'Suggest fixes to see whether a safe automatic patch is available.'}</div>
+          {hasRepairs && repairs}
+          {first.source === 'axe' && <p className="text-xs text-muted-foreground">Detected by axe-core ({first.ruleId})</p>}
+          {first.helpUrl && <a href={first.helpUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-link underline">Rule reference: {first.ruleId}<ExternalLink aria-hidden="true" className="size-3" /></a>}
+          <div><h4 className="text-sm font-medium">Affected elements</h4>{elements}</div>
+          <details className="rounded border p-3">
+            <summary className="min-h-9 cursor-pointer text-sm font-medium">Technical details</summary>
+            <div className="mt-2 space-y-3"><p className="text-sm">Rule ID: <code>{first.ruleId}</code></p><WcagChips refs={first.wcag.refs} />
+              <p className="text-sm text-muted-foreground">Verification: AccessFix reruns the automated checks after applying a fix; manual items require a person to confirm.</p>
+            </div>
+          </details>
         </div>
       </details>
-      {hasRepairs && repairs}
     </article>
   );
 }

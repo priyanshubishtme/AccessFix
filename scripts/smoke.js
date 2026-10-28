@@ -1,3 +1,4 @@
+/* global AbortSignal, console, fetch, process, setTimeout */
 const base = (process.argv[2] ?? '').replace(/\/+$/, '');
 if (!/^https?:\/\//i.test(base)) {
   console.error('Usage: npm run smoke -- <http(s)://api-host>');
@@ -5,7 +6,12 @@ if (!/^https?:\/\//i.test(base)) {
 }
 
 async function request(path, init) {
-  const response = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(30_000), ...init });
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(30_000), ...init });
+  } catch (error) {
+    throw new Error(`${init?.method ?? 'GET'} ${path}: ${error.message}${error.cause?.message ? ` (${error.cause.message})` : ''}`);
+  }
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`${init?.method ?? 'GET'} ${path}: HTTP ${response.status} ${body.slice(0, 500)}`);

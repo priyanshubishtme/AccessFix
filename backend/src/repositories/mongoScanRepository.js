@@ -72,8 +72,22 @@ export function createMongoScanRepository({ uri, ttlDays = 30, dbName, maxPoolSi
   async function hydrate(doc) {
     const scan = publicScan(doc);
     if (!scan) return null;
-    if (doc.pagesStored) scan.pages = (await crawlPages.find({ scanId: scan.id }).sort({ index: 1 }).toArray()).map(({ scanId, index, schemaVersion, _expireAt, ...row }) => row);
-    if (doc.discoveryLogStored) scan.discoveryLog = (await discoveryLogs.find({ scanId: scan.id }).sort({ index: 1 }).toArray()).map(({ scanId, index, schemaVersion, _expireAt, ...row }) => row);
+    if (doc.pagesStored) scan.pages = (await crawlPages.find({ scanId: scan.id }).sort({ index: 1 }).toArray()).map((entry) => {
+      const row = { ...entry };
+      delete row.scanId;
+      delete row.index;
+      delete row.schemaVersion;
+      delete row._expireAt;
+      return row;
+    });
+    if (doc.discoveryLogStored) scan.discoveryLog = (await discoveryLogs.find({ scanId: scan.id }).sort({ index: 1 }).toArray()).map((entry) => {
+      const row = { ...entry };
+      delete row.scanId;
+      delete row.index;
+      delete row.schemaVersion;
+      delete row._expireAt;
+      return row;
+    });
     return scan;
   }
   const coll = async () => {
@@ -160,7 +174,11 @@ export function createMongoScanRepository({ uri, ttlDays = 30, dbName, maxPoolSi
       const { verifications: c } = await coll();
       const safe = structuredClone(result);
       delete safe.patchedHtml;
-      if (safe.pageFiles) safe.pageFiles = safe.pageFiles.map(({ html, ...page }) => page);
+      if (safe.pageFiles) safe.pageFiles = safe.pageFiles.map((page) => {
+        const safePage = { ...page };
+        delete safePage.html;
+        return safePage;
+      });
       await c.insertOne({ ...safe, schemaVersion: 1, _expireAt: expireAt() });
     },
 

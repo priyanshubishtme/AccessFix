@@ -166,7 +166,7 @@ export function Business({ health }) {
           </h2>
           <p className="mt-2 text-base leading-7">
             In its February 2026 sample, WebAIM found detectable WCAG 2 failures on 95.9% of the top
-            million home pages. Automated results are only part of accessibility review. The FTC's
+            million home pages. Automated results are only part of accessibility review. The FTC&apos;s
             final order against accessiBe required a $1 million payment and restricted unsupported
             claims that automated tools make websites compliant.{' '}
             <a

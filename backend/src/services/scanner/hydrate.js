@@ -1,3 +1,4 @@
+/* global MutationObserver */
 /**
  * Wait until the DOM has been quiet for `quietMs`, but never longer than `capMs`.
  * A chatty page resolves at the cap so the scan still finishes.

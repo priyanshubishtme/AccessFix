@@ -1,5 +1,14 @@
 # UI screenshot gallery
 
+The final master-polish audit captures are in [master-audit/after](master-audit/after/); the corresponding pre-polish captures are in [master-audit/before](master-audit/before/). Audit findings and deferred acceptance items are listed in [docs/15-ui-audit.md](../15-ui-audit.md).
+
+| Master polish state | Light | Dark |
+| --- | --- | --- |
+| Landing 1280 / 768 / 375 | [1280](master-audit/after/landing/light/1280.png) · [768](master-audit/after/landing/light/768.png) · [375](master-audit/after/landing/light/375.png) | [1280](master-audit/after/landing/dark/1280.png) · [768](master-audit/after/landing/dark/768.png) · [375](master-audit/after/landing/dark/375.png) |
+| Results 1280 / 768 / 375 | [1280](master-audit/after/results/light/1280.png) · [768](master-audit/after/results/light/768.png) · [375](master-audit/after/results/light/375.png) | [1280](master-audit/after/results/dark/1280.png) · [768](master-audit/after/results/dark/768.png) · [375](master-audit/after/results/dark/375.png) |
+| Full screen after Apply 1280 / 768 / 375 | — | [1280](master-audit/after/fullscreen/dark/1280.png) · [768](master-audit/after/fullscreen/dark/768.png) · [375](master-audit/after/fullscreen/dark/375.png) |
+| Color simulation, inline / full screen | [inline](master-audit/after/colors/light/protanopia.png) · [full screen](master-audit/after/colors/light/fullscreen-protanopia.png) | [inline](master-audit/after/colors/dark/protanopia.png) · [full screen](master-audit/after/colors/dark/fullscreen-protanopia.png) |
+
 Screenshots are full-page captures at the named CSS viewport width. The app still opens in System mode by default. Dark mode is used here to compare directly with the supplied dark reference PNGs.
 
 ## Checkpoint 1: foundations, shell, landing page

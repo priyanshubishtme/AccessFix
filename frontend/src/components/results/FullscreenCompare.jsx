@@ -66,6 +66,9 @@ function IssuePanel({ items, selectedId, onSelect, onMove, verification, filter,
             aria-label="Filter preview issues by severity"
           >
             <option value="all">All severities</option>
+            <option value="remaining">Remaining</option>
+            <option value="fixed">Fixed</option>
+            <option value="review">Needs review</option>
             {SEVERITIES.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -413,6 +416,8 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
   const modeChosen = useRef(Boolean(storedMode));
   const stageRef = useRef(null);
   const scrollStart = useRef(null);
+  const pointers = useRef(new Map());
+  const pinchStart = useRef(null);
   const [stageSize, setStageSize] = useState({ width: 1280, height: 720 });
   const beforeSrc = screenshotUrl(scan.id, 'before');
   const afterSrc = screenshotUrl(scan.id, 'after');
@@ -426,7 +431,13 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
   const filtered = source.filter(
     (item) =>
       filter === 'all' ||
-      (filter === 'manual' ? item.manual : !item.manual && item.violation.impact === filter),
+      (filter === 'manual' || filter === 'review'
+        ? item.manual
+        : filter === 'fixed'
+          ? stateLabel(item, verification) === 'Resolved'
+          : filter === 'remaining'
+            ? ['Remaining', 'Regression'].includes(stateLabel(item, verification))
+            : !item.manual && item.violation.impact === filter),
   );
   const markItems = filtered
     .filter((item) => item.mark?.place === 'pin' && item.mark.x != null)
@@ -438,7 +449,30 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
   const effectiveId = items.some((item) => item.violation.id === selectedId)
     ? selectedId
     : (items[0]?.violation.id ?? null);
+  const availableWidth = mode === 'side' ? (stageSize.width - 12) / 2 : stageSize.width;
+  const naturalWidth = Math.max(160, Math.min(1280, availableWidth, (stageSize.height * 16) / 9));
+  const frameWidth = naturalWidth * zoom;
   const close = useCallback(() => setOpen(false), []);
+  const selectIssue = useCallback((id) => {
+    setSelectedId(id);
+    onSelectIssue?.(id);
+    const item = items.find((entry) => entry.violation.id === id);
+    if (item?.mark?.x != null && stageRef.current) {
+      stageRef.current.scrollLeft = Math.max(0, item.mark.x * frameWidth - stageSize.width / 2);
+      stageRef.current.scrollTop = Math.max(
+        0,
+        (item.mark.y * frameWidth * 9) / 16 - stageSize.height / 2,
+      );
+    }
+  }, [frameWidth, items, onSelectIssue, stageSize.height, stageSize.width]);
+  const moveSelected = useCallback((direction) => {
+    if (!items.length) return;
+    const current = Math.max(0, items.findIndex((item) => item.violation.id === effectiveId));
+    const next = (current + direction + items.length) % items.length;
+    const id = items[next].violation.id;
+    selectIssue(id);
+    document.getElementById(`compare-issue-${id}`)?.scrollIntoView({ block: 'nearest' });
+  }, [effectiveId, items, selectIssue]);
 
   useEffect(() => {
     if (hasAfter && !modeChosen.current) setMode('slider');
@@ -490,7 +524,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, zoom, hasAfter, items]);
+  }, [open, zoom, hasAfter, moveSelected]);
 
   function chooseMode(value) {
     modeChosen.current = true;
@@ -501,31 +535,17 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
       /* storage may be disabled */
     }
   }
-  function moveSelected(direction) {
-    if (!items.length) return;
-    const current = Math.max(
-      0,
-      items.findIndex((item) => item.violation.id === effectiveId),
-    );
-    const next = (current + direction + items.length) % items.length;
-    const id = items[next].violation.id;
-    selectIssue(id);
-    document.getElementById(`compare-issue-${id}`)?.scrollIntoView({ block: 'nearest' });
-  }
-  function selectIssue(id) {
-    setSelectedId(id);
-    onSelectIssue?.(id);
-    const item = items.find((entry) => entry.violation.id === id);
-    if (item?.mark?.x != null && stageRef.current) {
-      stageRef.current.scrollLeft = Math.max(0, item.mark.x * frameWidth - stageSize.width / 2);
-      stageRef.current.scrollTop = Math.max(
-        0,
-        (item.mark.y * frameWidth * 9) / 16 - stageSize.height / 2,
-      );
-    }
-  }
   function pointerStart(event) {
-    if (zoom <= 1 || event.target.closest('button')) return;
+    if (event.target.closest('button')) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      pinchStart.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom };
+      scrollStart.current = null;
+      stageRef.current.setPointerCapture?.(event.pointerId);
+      return;
+    }
+    if (zoom <= 1) return;
     scrollStart.current = {
       x: event.clientX,
       y: event.clientY,
@@ -535,18 +555,25 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
     stageRef.current.setPointerCapture?.(event.pointerId);
   }
   function pointerMove(event) {
+    if (pointers.current.has(event.pointerId)) {
+      pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (pointers.current.size === 2 && pinchStart.current) {
+      const [a, b] = [...pointers.current.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchStart.current.zoom * distance / pinchStart.current.distance)));
+      return;
+    }
     if (!scrollStart.current) return;
     stageRef.current.scrollLeft =
       scrollStart.current.left - (event.clientX - scrollStart.current.x);
     stageRef.current.scrollTop = scrollStart.current.top - (event.clientY - scrollStart.current.y);
   }
-  function pointerEnd() {
+  function pointerEnd(event) {
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size < 2) pinchStart.current = null;
     scrollStart.current = null;
   }
-
-  const availableWidth = mode === 'side' ? (stageSize.width - 12) / 2 : stageSize.width;
-  const naturalWidth = Math.max(160, Math.min(1280, availableWidth, (stageSize.height * 16) / 9));
-  const frameWidth = naturalWidth * zoom;
 
   return (
     <>
@@ -634,9 +661,18 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue,
                 onPointerUp={pointerEnd}
                 onPointerCancel={pointerEnd}
                 onWheel={(event) => {
-                  if (!event.ctrlKey && !event.metaKey) return;
                   event.preventDefault();
-                  setZoom((value) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value - Math.sign(event.deltaY) * 0.1)));
+                  const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom - Math.sign(event.deltaY) * 0.1));
+                  const rect = stageRef.current.getBoundingClientRect();
+                  const anchorX = event.clientX - rect.left + stageRef.current.scrollLeft;
+                  const anchorY = event.clientY - rect.top + stageRef.current.scrollTop;
+                  setZoom(nextZoom);
+                  requestAnimationFrame(() => {
+                    if (!stageRef.current) return;
+                    const ratio = nextZoom / zoom;
+                    stageRef.current.scrollLeft = anchorX * ratio - (event.clientX - rect.left);
+                    stageRef.current.scrollTop = anchorY * ratio - (event.clientY - rect.top);
+                  });
                 }}
               >
                 {!hasAfter && mode === 'before' && (

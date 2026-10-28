@@ -1,9 +1,3 @@
-/** @param {number | Date | (() => number)} [now] */
-function clockOf(now) {
-  if (typeof now === 'function') return now;
-  return () => (now instanceof Date ? now.getTime() : Date.now());
-}
-
 export function utcDay(ms) {
   return new Date(ms).toISOString().slice(0, 10);
 }

@@ -102,6 +102,19 @@ describe('full-screen comparison', () => {
     expect(screen.getByRole('button', { name: 'Next issue' })).toBeEnabled();
   });
 
+  it('zooms on a plain mouse wheel and filters fixed versus remaining issues', () => {
+    const verification = { resolved: [scan().violations[0]], remaining: [], regressions: [] };
+    const dialog = openDialog({ verification });
+    const stage = within(dialog).getByLabelText(/Screenshot canvas/);
+    fireEvent.wheel(stage, { deltaY: -1, clientX: 300, clientY: 240 });
+    expect(screen.getByText('110%')).toBeInTheDocument();
+    const filter = within(dialog).getByRole('combobox', { name: 'Filter preview issues by severity' });
+    fireEvent.change(filter, { target: { value: 'fixed' } });
+    expect(within(dialog).getByText('Issue 1 of 1')).toBeInTheDocument();
+    fireEvent.change(filter, { target: { value: 'remaining' } });
+    expect(within(dialog).getByText('No issues match this filter')).toBeInTheDocument();
+  });
+
   it('shows the before image before fixes, and an actionable expired-screenshot state', () => {
     const beforeOnly = scan(false);
     render(<FullscreenCompare scan={beforeOnly} onRescan={vi.fn()} />);

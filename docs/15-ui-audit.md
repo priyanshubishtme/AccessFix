@@ -66,3 +66,41 @@ The UI already reads that health value. The code therefore currently enforces 5 
 not 2 MB; changing the backend default would alter behavior outside the brief's listed backend
 allowlist. Workstream 5 will keep the displayed value tied to `/health` and record this mismatch
 instead of silently changing the API limit.
+
+## Final audit — 2026-10-28
+
+After screenshots from the final pass are in [`master-audit/after`](ui-gallery/master-audit/after/): landing and Results at 1280, 768, and 375 CSS pixels in Light and Dark; expanded Results panels; and the color-simulation images in inline and full-screen comparison. The run reported no page errors and no horizontal document overflow at those widths. The existing [route gallery](ui-gallery/README.md#checkpoint-4-remaining-pages-and-qa) contains History, Business, Login, Sign-up, Projects, report/share unavailable states, and 404 in both themes. The [comparison gallery](ui-gallery/README.md#checkpoint-3-full-screen-comparison) shows the after-Apply state.
+
+### Fixed and rechecked
+
+- Results summary duplication, pre-Suggest wording, score-band mismatch, red primary action, preview sizing, and nested issue scrolling were corrected.
+- Issue cards now collapse, group, and present concise status and expandable element/rule details.
+- Full-screen comparison now has a clear before-only state, zoom controls, keyboard help, issue navigation, status/severity filters, plain-wheel zoom, two-pointer pinch zoom, and synced scrolling for side-by-side panes. The compare component tests cover slider keyboard/pointer changes, wheel zoom, mode persistence, filtering, focus states, and screenshot failure.
+- The Colors-tab root cause was reproduced and fixed: the color filter is passed through to the full-screen compare image. The final browser audit confirmed the rendered filter and sampled pixels changed in both themes.
+- Business content no longer exposes operations commands; its size limit follows `/health`, pricing is labeled illustrative, and linked claims cite source pages.
+- Login and sign-up include field-linked errors, show/hide password, retry countdown, return path, and honest password-reset/email status.
+- Crawler discoveries and skip reasons appear in the crawl map. Pasted HTML accepts an optional base URL. Original-source and patched-HTML endpoints are available.
+- Mongo adapter now separates crawl pages and discovery rows, adds indexes/schema migration metadata, startup connection errors, ping, pool settings, and graceful close.
+
+### Deferred with reasons
+
+| Item | Reason / current behavior |
+| --- | --- |
+| After-image element boxes | After marks still use the original mark coordinates; a post-patch layout measurement and persisted `afterMarks` field are not implemented. |
+| Slider animation contract | Slider movement still updates React state on pointer movement. It does not yet update a CSS variable through `requestAnimationFrame` as specified. |
+| Full-screen touch | Two-pointer pinch and drag handlers are implemented, but no real-device or Playwright touch-emulation run verified them in this final pass. |
+| Pointer/mouse audit checks | The Checks tab still does not report click-only controls, pointer target-size, hover-only behavior, or visible focus as a separate set of non-scoring findings. |
+| Asset completeness | Relative assets for pasted HTML can use `baseUrl`, and resource requests pass through the network guard. Original-origin document interception, eager image decode/wait, uploaded-asset inventory, unresolved-asset notices, and the required full fixture assertion are not implemented. |
+| Full export menu | Original HTML, patched HTML, report, and crawl ZIP routes exist. A unified patch download, manifest, ZIP containing original plus updated output, per-page crawl menu, uploaded CSS separate output, and base-URL download option are not implemented. |
+| LLM status and language checks | Provider off/on/circuit state and draft safety exist. The UI does not yet distinguish rate-limited, budget reached, invalid key, and timeout, and draft/page language matching is not verified. No live provider request was possible without a key. |
+| Manual stress cases | This pass did not manually test slow network, API down, blocked `cdn.jsdelivr.net`, keyboard-only navigation across every route, or actual 200% browser zoom. The full-screen code view has a text-diff fallback; a final CDN-block run was not performed. |
+| Mongo live integration | Unit/contract tests pass without a URI and skip the real server. `MONGODB_URI` at 27017 refused connections. The provided Compose Mongo container restarted with `exec format error` in this Docker environment, so persistence across a real Mongo restart remains unverified. |
+
+### Final QA evidence
+
+- Frontend component suite: **133 passed** after the final full-screen filter and wheel-zoom changes. The focused compare tests include the new wheel and state-filter assertions.
+- Backend unit suite: **392 passed, 1 skipped**.
+- Browser suite: **28 passed**, including the self-scan. The built UI was scanned across 9 routes in Light and Dark (18 scans) and the generated report recorded zero automated violations. The self-scan artifact is [`frontend/src/generated/self-scan.json`](../frontend/src/generated/self-scan.json).
+- Production build passed. Monaco/editor chunks still trigger Vite's >500 KB advisory; local lazy loading is intact.
+- Local smoke passed against the live API: health OK, scan completed, report returned 200.
+- The Mongo contract suite passes with **6 passed, 1 skipped** when no URI is configured. With `MONGODB_URI` set to 27017, the host refused connections. The Compose `mongo:7.0` container repeatedly exited with `exec format error`, so the real-server persistence test could not be completed in this environment.

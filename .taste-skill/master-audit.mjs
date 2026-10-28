@@ -1,4 +1,4 @@
-/* global process, console */
+/* global console, document, getComputedStyle */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -69,9 +69,9 @@ try {
       source: img.currentSrc,
       loaded: img.complete && img.naturalWidth > 0,
       matrixCount: document.querySelectorAll('filter feColorMatrix').length,
-      filterId: getComputedStyle(img).filter.match(/#([^\")]+)/)?.[1] ?? null,
+      filterId: getComputedStyle(img).filter.match(/#([^")]+)/)?.[1] ?? null,
       filterReferenceExists: Boolean(
-        document.getElementById(getComputedStyle(img).filter.match(/#([^\")]+)/)?.[1] ?? ''),
+        document.getElementById(getComputedStyle(img).filter.match(/#([^")]+)/)?.[1] ?? ''),
       ),
     }));
     const colorFolder = join(root, 'colors', theme);

@@ -38,12 +38,12 @@ function savedMode() {
 }
 
 function stateLabel(item, verification) {
-  if (!verification) return 'Not verified';
+  if (!verification) return item.manual ? 'Needs review' : 'Fix available';
   const id = item.violation.id;
   if (verification.resolved.some((entry) => entry.id === id)) return 'Resolved';
   if (verification.regressions.some((entry) => entry.id === id)) return 'Regression';
   if (verification.remaining.some((entry) => entry.id === id)) return 'Remaining';
-  return 'Not verified';
+  return item.manual ? 'Needs review' : 'Fix available';
 }
 
 function IssuePanel({ items, selectedId, onSelect, onMove, verification, filter, onFilter }) {
@@ -264,7 +264,7 @@ function CompareFrame({
             items={items}
             selectedId={selectedId}
             markItems={markItems}
-            showMarks={false}
+            showMarks={showMarks}
             onSelect={onSelect}
             onBroken={onBroken}
             style={{ width: '100%' }}
@@ -402,6 +402,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
   const [broken, setBroken] = useState({ before: false, after: false });
   const [selectedId, setSelectedId] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const modeChosen = useRef(Boolean(storedMode));
   const stageRef = useRef(null);
   const scrollStart = useRef(null);
@@ -420,7 +421,9 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
       filter === 'all' ||
       (filter === 'manual' ? item.manual : !item.manual && item.violation.impact === filter),
   );
-  const markItems = filtered.filter((item) => item.mark?.place === 'pin' && item.mark.x != null);
+  const markItems = filtered
+    .filter((item) => item.mark?.place === 'pin' && item.mark.x != null)
+    .map((item) => ({ ...item, verifiedStatus: stateLabel(item, verification) }));
   const items = filtered.map((item) => ({
     ...item,
     verifiedStatus: stateLabel(item, verification),
@@ -451,9 +454,18 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
     const onKeyDown = (event) => {
       if (
         event.target instanceof HTMLElement &&
-        event.target.matches('input,select,textarea,[role="slider"],button')
+        event.target.matches('input,select,textarea,[role="slider"]')
       )
         return;
+      if (event.key === '?') setShowShortcuts((value) => !value);
+      if (event.key.toLowerCase() === 'm') setShowMarks((value) => !value);
+      if (event.key === '[') moveSelected(-1);
+      if (event.key === ']') moveSelected(1);
+      if (event.key === '0') setZoom(1);
+      if (['1', '2', '3', '4'].includes(event.key)) {
+        const nextMode = MODES[Number(event.key) - 1]?.[0];
+        if (nextMode && (nextMode === 'before' || hasAfter)) chooseMode(nextMode);
+      }
       if (event.key === '+' || event.key === '=')
         setZoom((value) => Math.min(MAX_ZOOM, Math.round((value + 0.25) * 100) / 100));
       if (event.key === '-' || event.key === '_')
@@ -471,7 +483,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, zoom]);
+  }, [open, zoom, hasAfter, items]);
 
   function chooseMode(value) {
     modeChosen.current = true;
@@ -614,6 +626,11 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
                 onPointerMove={pointerMove}
                 onPointerUp={pointerEnd}
                 onPointerCancel={pointerEnd}
+                onWheel={(event) => {
+                  if (!event.ctrlKey && !event.metaKey) return;
+                  event.preventDefault();
+                  setZoom((value) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value - Math.sign(event.deltaY) * 0.1)));
+                }}
               >
                 {!hasAfter && mode === 'before' && (
                   <p className="mb-3 rounded-md border border-moderate px-3 py-2 text-sm text-moderate">
@@ -711,6 +728,8 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
                 <RotateCcw aria-hidden="true" className="size-4" />
                 <span className="hidden sm:inline">Fit</span>
               </button>
+              <button type="button" className="hidden min-h-10 rounded-md px-2 text-sm hover:bg-raised sm:inline-flex" onClick={() => setZoom(1)}>100%</button>
+              <button type="button" className="hidden min-h-10 rounded-md px-2 text-sm hover:bg-raised sm:inline-flex" onClick={() => setZoom(MAX_ZOOM)}>Fill</button>
               <span className="mx-1 h-6 border-l" />
               <button
                 type="button"
@@ -748,6 +767,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
               onFilter={setFilter}
             />
           </div>
+          {showShortcuts && <div role="dialog" aria-label="Keyboard shortcuts" className="absolute bottom-20 left-1/2 z-30 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border bg-background p-4 text-sm shadow-popover"><div className="flex items-center justify-between"><h3 className="font-semibold">Keyboard shortcuts</h3><button type="button" aria-label="Close shortcuts" onClick={() => setShowShortcuts(false)}>×</button></div><p className="mt-2">+ / − zoom · 0 fit · arrows pan · [ / ] previous or next issue · M marks · 1–4 comparison modes · ? this list</p></div>}
         </div>
         <footer className="flex min-h-12 items-center justify-between gap-3 border-t bg-surface px-4 py-2 text-xs text-muted-foreground sm:text-sm">
           <span>Comparison uses the original 1280 × 720 viewport screenshot, scaled to fit.</span>

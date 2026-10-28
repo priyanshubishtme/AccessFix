@@ -60,7 +60,7 @@ export function Marks({ items, highlightIds = [], onSelect, hidden = false }) {
       {items.map((item) => {
         const spot = byId.get(item.violation.id);
         if (!spot) return null;
-        const fill = item.manual ? MARK_FILLS.manual : MARK_FILLS[item.violation.impact] ?? MARK_FILLS.moderate;
+        const fill = item.verifiedStatus === 'Resolved' ? '#15803d' : item.manual ? MARK_FILLS.manual : MARK_FILLS[item.violation.impact] ?? MARK_FILLS.moderate;
         const active = highlightIds.includes(item.violation.id);
         return (
           <div
@@ -81,12 +81,13 @@ export function Marks({ items, highlightIds = [], onSelect, hidden = false }) {
       {items.map((item) => {
         const spot = byId.get(item.violation.id);
         if (!spot) return null;
-        const fill = item.manual ? MARK_FILLS.manual : MARK_FILLS[item.violation.impact] ?? MARK_FILLS.moderate;
-        const glyph = item.manual ? MARK_GLYPH.manual : MARK_GLYPH[item.violation.impact] ?? MARK_GLYPH.moderate;
+        const fill = item.verifiedStatus === 'Resolved' ? '#15803d' : item.manual ? MARK_FILLS.manual : MARK_FILLS[item.violation.impact] ?? MARK_FILLS.moderate;
+        const glyph = item.verifiedStatus === 'Resolved' ? '✓' : item.manual ? MARK_GLYPH.manual : MARK_GLYPH[item.violation.impact] ?? MARK_GLYPH.moderate;
         const active = highlightIds.includes(item.violation.id);
         const severity = item.manual ? 'check by hand' : severityOf(item.violation.impact).label.toLowerCase();
         const broken = oneLine(item.manual ? `Check by hand. ${item.violation.explanation}` : item.violation.title);
-        const label = `Issue ${item.n}, ${severity}: ${broken}`;
+        const status = item.verifiedStatus ? `, ${item.verifiedStatus}` : '';
+        const label = `Issue ${item.n}, ${severity}${status}: ${broken}`;
         return (
           <button
             key={`badge-${item.violation.id}`}
@@ -114,7 +115,7 @@ export function Marks({ items, highlightIds = [], onSelect, hidden = false }) {
               role="tooltip"
               className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-56 -translate-x-1/2 rounded-md border border-white bg-background px-2 py-1 text-left text-sm font-normal text-foreground shadow-[0_0_0_1px_#0f172a] group-hover:block group-focus-visible:block"
             >
-              {broken}
+              {item.verifiedStatus === 'Resolved' ? 'Fixed. ' : ''}{broken}
             </span>
           </button>
         );

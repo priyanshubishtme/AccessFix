@@ -92,7 +92,7 @@ describe('full-screen comparison', () => {
     for (let index = 0; index < 12; index += 1) fireEvent.click(zoomIn);
     expect(screen.getByText('250%')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Fit' }));
-    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getByText('100%', { selector: '[aria-live="polite"]' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next issue' })).toBeEnabled();
   });
 

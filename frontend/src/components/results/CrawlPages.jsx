@@ -128,6 +128,15 @@ export function CrawlPages({ scan, live = false, zipMaxBytes }) {
           </tbody>
         </table>
       </div>
+      {(scan.discoveryLog ?? []).length > 0 && <details className="mt-5 rounded-lg border bg-background p-3">
+        <summary className="min-h-10 cursor-pointer text-sm font-semibold">Discovery map ({scan.discoveryLog.length} URLs found)</summary>
+        <ul className="mt-2 max-h-80 space-y-2 overflow-y-auto">
+          {scan.discoveryLog.map((entry, index) => <li key={`${entry.depth}-${entry.url}-${index}`} className="rounded border p-2 text-sm">
+            <p className="break-all font-mono">{entry.url}</p>
+            <p className="mt-1 text-muted-foreground">Depth {entry.depth} · {entry.status}{entry.reason ? ` · ${entry.reason}` : ''}{entry.linkedFrom ? ` · linked from ${entry.linkedFrom}` : ''}</p>
+          </li>)}
+        </ul>
+      </details>}
     </section>
   );
 }

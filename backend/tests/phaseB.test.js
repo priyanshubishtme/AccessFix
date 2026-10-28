@@ -47,6 +47,16 @@ describe('crawl', () => {
     expect(order).toEqual(['https://example.com/', 'https://example.com/a', 'https://example.com/b']);
     expect(result.pages.find((p) => p.url === 'https://example.com/a/deep').reason).toBe(SKIP_CAP);
     expect(result.pages.filter((p) => p.status === 'completed').map((p) => p.url)).toEqual(order);
+    expect(result.discoveryLog.find((entry) => entry.url === 'https://example.com/a')).toMatchObject({
+      depth: 1,
+      linkedFrom: 'https://example.com/',
+      status: 'scanned',
+    });
+    expect(result.discoveryLog.find((entry) => entry.url === 'https://example.com/a/deep')).toMatchObject({
+      depth: 2,
+      status: 'skipped',
+      reason: SKIP_CAP,
+    });
   });
 
   it('pins the host after the seed redirect and drops other hosts', async () => {

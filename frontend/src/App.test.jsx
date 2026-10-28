@@ -139,6 +139,19 @@ describe('input', () => {
     expect(html).not.toContain('<link');
   });
 
+  it('sends an optional base URL with pasted HTML for relative assets', async () => {
+    const fetch = mockApi();
+    vi.stubGlobal('fetch', fetch);
+    renderApp();
+    await screen.findByText('API online');
+    fireEvent.change(screen.getByLabelText('HTML to scan'), { target: { value: '<img src="/logo.svg">' } });
+    fireEvent.change(screen.getByLabelText('Base URL for relative assets (optional)'), { target: { value: 'https://example.com/path/' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Scan' }));
+    await waitFor(() => expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true));
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(post[1].body).input.baseUrl).toBe('https://example.com/path/');
+  });
+
   it('sends the selected WCAG target with includeAAA for AAA', async () => {
     const fetch = mockApi();
     vi.stubGlobal('fetch', fetch);

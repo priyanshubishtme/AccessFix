@@ -61,7 +61,7 @@ export function createScansController(orchestrator) {
       await load(req, { write: true });
       const html = await orchestrator.getSource(req.valid.params.id);
       res.set('X-Content-Type-Options', 'nosniff');
-      res.type('text/plain; charset=utf-8').send(html);
+      res.type('text/html').attachment(`accessfix-${req.valid.params.id}-original.html`).send(html);
     },
     async report(req, res) {
       await load(req);

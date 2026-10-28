@@ -28,6 +28,7 @@ export async function runCrawl(opts) {
   const deadline = started + opts.budgetMs;
   /** @type {object[]} */
   const pages = [];
+  const discoveryLog = [{ url: opts.seedUrl, depth: 0, linkedFrom: null, status: 'seed', reason: null }];
   const seen = new Set();
   const queued = new Set([opts.seedUrl]);
   /** @type {{ url: string, depth: number }[]} */
@@ -140,14 +141,27 @@ export async function runCrawl(opts) {
       status: 'completed',
       reason: null,
     });
+    const visited = discoveryLog.find((entry) => entry.url === item.url);
+    if (visited) visited.status = 'scanned';
     opts.onEvent?.({ message: `Finished ${finalUrl}` });
 
     if (item.depth < opts.maxDepth) {
       for (const link of raced.value.links ?? []) {
         const next = normalizeCrawlUrl(link, finalUrl);
-        if (!next || queued.has(next)) continue;
-        if (hostOf(next) !== pinnedHost) continue;
+        if (!next) {
+          discoveryLog.push({ url: String(link).slice(0, 2048), depth: item.depth + 1, linkedFrom: finalUrl, status: 'skipped', reason: 'unsupported or invalid URL' });
+          continue;
+        }
+        if (queued.has(next)) {
+          discoveryLog.push({ url: next, depth: item.depth + 1, linkedFrom: finalUrl, status: 'skipped', reason: 'duplicate URL' });
+          continue;
+        }
+        if (hostOf(next) !== pinnedHost) {
+          discoveryLog.push({ url: next, depth: item.depth + 1, linkedFrom: finalUrl, status: 'skipped', reason: 'outside pinned host' });
+          continue;
+        }
         queued.add(next);
+        discoveryLog.push({ url: next, depth: item.depth + 1, linkedFrom: finalUrl, status: 'queued', reason: null });
         queue.push({ url: next, depth: item.depth + 1 });
       }
     }
@@ -162,10 +176,20 @@ export async function runCrawl(opts) {
     }
   }
 
+  for (const entry of discoveryLog) {
+    if (entry.status !== 'queued') continue;
+    const page = pages.find((candidate) => candidate.url === entry.url);
+    if (page) {
+      entry.status = page.status === 'completed' ? 'scanned' : 'skipped';
+      entry.reason = page.reason ?? null;
+    }
+  }
+
   return {
     pinnedHost,
     partial: pages.some((p) => p.status !== 'completed'),
     pages,
+    discoveryLog,
   };
 }
 

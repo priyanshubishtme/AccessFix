@@ -59,6 +59,7 @@ export function ScanForm({
   const [html, setHtml] = useState('');
   const [files, setFiles] = useState({ html: null, css: [] });
   const [url, setUrl] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
   const [crawl, setCrawl] = useState(false);
   const [waitFor, setWaitFor] = useState('');
   const [authText, setAuthText] = useState('');
@@ -82,7 +83,7 @@ export function ScanForm({
       return;
     }
     if (mode === 'html' || mode === 'files') {
-      onSubmit({ input: { type: 'html', html: source }, options: optionsFor(target) });
+      onSubmit({ input: { type: 'html', html: source, ...(baseUrl.trim() ? { baseUrl: baseUrl.trim() } : {}) }, options: optionsFor(target) });
       return;
     }
     let auth;
@@ -183,6 +184,8 @@ export function ScanForm({
                   className={`${field} mt-2 p-3 font-mono leading-6`}
                   placeholder="<!doctype html>…"
                 />
+                <label htmlFor={`${uid}-base-url`} className="mt-3 block text-sm font-medium">Base URL for relative assets (optional)</label>
+                <input id={`${uid}-base-url`} type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://example.com/path/" className={`${field} mt-1`} />
                 <p id={hintId} className="mt-2 text-sm text-muted-foreground">
                   <span className="tabular">
                     {formatBytes(bytes)} of {formatBytes(maxBytes)}

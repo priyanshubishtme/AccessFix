@@ -8,6 +8,14 @@ import { installNetworkGuard } from './networkGuard.js';
 import { frameKey, mainSelector, rectToPin } from './pins.js';
 import { axeTags } from './target.js';
 
+function withBaseUrl(html, inputUrl) {
+  const url = new URL(inputUrl).href.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+  const base = `<base href="${url}">`;
+  if (/<base\b[^>]*>/i.test(html)) return html.replace(/<base\b[^>]*>/i, base);
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, (head) => `${head}${base}`);
+  return html.replace(/<html\b[^>]*>/i, (root) => `${root}<head>${base}</head>`);
+}
+
 export { axeTags, resolveTarget, standardLabel } from './target.js';
 
 /**
@@ -124,6 +132,7 @@ export function createScanner(config, deps = {}) {
 
   async function scan(input, options, hooks = {}) {
     const { onStage = () => {}, replay, signal, storageState, waitFor, collectLinks, pinnedHost, timeoutMs } = hooks;
+    const htmlWithBase = input.type === 'html' && input.baseUrl ? withBaseUrl(input.html, input.baseUrl) : null;
     return pool.withContext(
       async (context) => {
         const page = await context.newPage();
@@ -149,7 +158,7 @@ export function createScanner(config, deps = {}) {
         onStage('loading');
         try {
           if (input.type === 'html') {
-            await page.setContent(input.html, { waitUntil: 'load', timeout: navTimeout });
+            await page.setContent(htmlWithBase ?? input.html, { waitUntil: 'load', timeout: navTimeout });
           } else {
             const res = await page.goto(input.url, { waitUntil: 'load', timeout: navTimeout });
             if (guard.mainError) throw guard.mainError;
@@ -241,7 +250,7 @@ export function createScanner(config, deps = {}) {
           findings: checks.findings,
           headingOutline: checks.outline,
           /** The text repairs patch: pasted HTML, or the HTML the server sent. */
-          source: input.type === 'html' ? input.html : guard.mainBody,
+          source: input.type === 'html' ? (htmlWithBase ?? input.html) : guard.mainBody,
           /** Responses captured for offline replay during verification. */
           resources: guard.captured,
           page: {

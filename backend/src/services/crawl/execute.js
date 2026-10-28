@@ -148,6 +148,7 @@ export async function executeCrawl({
     partial: result.partial,
     pinnedHost: result.pinnedHost,
     pages: result.pages,
+    discoveryLog: result.discoveryLog,
     violations: dedupe(finished.flatMap((page) => page.violations ?? [])),
     advisory: dedupe(finished.flatMap((page) => page.advisory ?? [])),
     manualReview: dedupe(finished.flatMap((page) => page.manualReview ?? [])),

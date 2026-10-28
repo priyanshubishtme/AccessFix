@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, Download } from 'lucide-react';
-import { patchedHtmlUrl } from '@/lib/api.js';
+import { patchedHtmlUrl, sourceHtmlUrl } from '@/lib/api.js';
 import { CodeDisclosure } from './Workbench.jsx';
 
 /**
@@ -27,6 +27,9 @@ export function PatchedCode({ scanId, verification, visual }) {
       <h2 id="code-heading" className="text-lg font-semibold">
         Patched code
       </h2>
+      <a href={sourceHtmlUrl(scanId)} download className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-raised">
+        <Download aria-hidden="true" className="size-4" /> Download original HTML
+      </a>
       {html ? (
         <>
           <p className="mt-1 max-w-[70ch] text-sm leading-6 text-muted-foreground">

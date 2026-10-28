@@ -139,6 +139,7 @@ export const verifyRepairs = (id, body, signal) =>
 
 export const patchedHtmlUrl = (id) =>
   `${API_BASE_URL}/scans/${encodeURIComponent(id)}/patched.html`;
+export const sourceHtmlUrl = (id) => `${API_BASE_URL}/scans/${encodeURIComponent(id)}/source`;
 
 export const screenshotUrl = (id, which) =>
   `${API_BASE_URL}/scans/${encodeURIComponent(id)}/screenshot?which=${which}`;

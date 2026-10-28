@@ -8,7 +8,7 @@ const count = z.number().int().nonnegative();
 const ms = z.number().int().nonnegative();
 
 export const ScanInput = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('html'), html: z.string().min(1) }),
+  z.object({ type: z.literal('html'), html: z.string().min(1), baseUrl: z.url({ protocol: /^https?$/ }).max(2048).optional() }),
   z.object({ type: z.literal('url'), url: z.url({ protocol: /^https?$/ }).max(2048) }),
 ]);
 
@@ -150,6 +150,7 @@ export const Scan = z.object({
       }).passthrough(),
     )
     .default([]),
+  discoveryLog: z.array(z.object({ url: z.string(), depth: z.number().int().nonnegative(), linkedFrom: z.string().nullable(), status: z.enum(['seed', 'queued', 'scanned', 'skipped']), reason: z.string().nullable() })).default([]),
   keyboard: z
     .array(
       z.object({

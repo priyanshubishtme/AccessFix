@@ -608,6 +608,16 @@ export function Results({ scan, health = null, onNewScan }) {
             </div>
           </div>
 
+          <SecondaryDisclosure title="What we checked">
+            <section aria-label="Scan coverage" className="grid gap-3 text-sm sm:grid-cols-2">
+              <p><span className="font-medium">Input:</span> {scan.input.type === 'url' ? 'URL loaded in a browser' : 'Pasted or uploaded HTML'}</p>
+              <p><span className="font-medium">Viewport:</span> {scan.viewport?.width ?? 1280} × {scan.viewport?.height ?? 720} CSS pixels</p>
+              <p><span className="font-medium">Color scheme:</span> Light</p>
+              <p><span className="font-medium">Standard:</span> WCAG {scan.options?.target ?? 'AA'}</p>
+              <p className="sm:col-span-2">Checks use rendered HTML, computed styles where the rule needs them, and JavaScript runs during page loading.</p>
+              <p className="sm:col-span-2"><span className="font-medium">Not covered:</span> standalone CSS linting, other viewport sizes, dark mode, hover-only states, and application JavaScript logic.</p>
+            </section>
+          </SecondaryDisclosure>
           <SecondaryDisclosure title={`Checks (${checkCount})`}>
             <ChecksPanel scan={scan} onShowIssue={showIssue} />
           </SecondaryDisclosure>

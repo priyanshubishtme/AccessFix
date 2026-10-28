@@ -85,6 +85,7 @@ export function Workbench({
         <FullscreenCompare
           scan={scan}
           verification={verification}
+          colorFilter={filter}
           onRescan={onRescan}
           onSelectIssue={onSelect}
         />

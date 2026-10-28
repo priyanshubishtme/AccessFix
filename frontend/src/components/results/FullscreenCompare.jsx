@@ -188,6 +188,7 @@ function ScreenshotFrame({
   onSelect,
   onBroken,
   style,
+  filter,
 }) {
   return (
     <figure className={`min-w-0 ${className}`}>
@@ -204,6 +205,7 @@ function ScreenshotFrame({
           src={src}
           alt={after ? 'Page after verified fixes' : 'Page before fixes'}
           className="absolute inset-0 size-full object-contain"
+          style={filter ? { filter } : undefined}
           onError={() => onBroken(after ? 'after' : 'before')}
         />
         {after && (
@@ -237,6 +239,7 @@ function CompareFrame({
   onSelect,
   width,
   onBroken,
+  filter,
 }) {
   const frameStyle = { width, height: (width * 9) / 16 };
   const afterOnly = mode === 'after';
@@ -254,6 +257,7 @@ function CompareFrame({
             showMarks={showMarks}
             onSelect={onSelect}
             onBroken={onBroken}
+            filter={filter}
             style={{ width: '100%' }}
           />
         </div>
@@ -267,6 +271,7 @@ function CompareFrame({
             showMarks={showMarks}
             onSelect={onSelect}
             onBroken={onBroken}
+            filter={filter}
             style={{ width: '100%' }}
           />
         </div>
@@ -280,13 +285,14 @@ function CompareFrame({
           src={beforeSrc}
           alt="Page before fixes"
           className="absolute inset-0 size-full object-contain"
+          style={filter ? { filter } : undefined}
           onError={() => onBroken('before')}
         />
         <img
           src={afterSrc}
           alt="Page after verified fixes"
           className="absolute inset-0 size-full object-contain"
-          style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
+          style={{ clipPath: `inset(0 ${100 - split}% 0 0)`, ...(filter ? { filter } : {}) }}
           onError={() => onBroken('after')}
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-between p-3 text-sm font-semibold text-white [text-shadow:0_1px_4px_#000]">
@@ -378,6 +384,7 @@ function CompareFrame({
         showMarks={showMarks}
         onSelect={onSelect}
         onBroken={onBroken}
+        filter={filter}
         style={frameStyle}
       />
     </div>
@@ -390,7 +397,7 @@ function verificationTag(items, selectedId) {
 }
 
 /** Full-viewport screenshot comparison, layered on the existing captured shots. */
-export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue }) {
+export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue, colorFilter }) {
   const storedMode = savedMode();
   const hasAfterOnScan = Boolean(scan.shots?.after);
   const [open, setOpen] = useState(false);
@@ -674,6 +681,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
                           onSelect={selectIssue}
                           width={frameWidth}
                           onBroken={(key) => setBroken((value) => ({ ...value, [key]: true }))}
+                          filter={colorFilter}
                         />
                       </div>
                     )
@@ -691,6 +699,7 @@ export function FullscreenCompare({ scan, verification, onRescan, onSelectIssue 
                       onSelect={selectIssue}
                       width={frameWidth}
                       onBroken={(key) => setBroken((value) => ({ ...value, [key]: true }))}
+                      filter={colorFilter}
                     />
                   )}
                 </div>

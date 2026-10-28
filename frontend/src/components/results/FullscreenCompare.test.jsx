@@ -86,6 +86,12 @@ describe('full-screen comparison', () => {
     expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);
   });
 
+  it('applies the selected color simulation to both compare images', () => {
+    openDialog({ colorFilter: 'grayscale(1)' });
+    expect(screen.getByAltText('Page before fixes')).toHaveStyle({ filter: 'grayscale(1)' });
+    expect(screen.getByAltText('Page after verified fixes')).toHaveStyle({ filter: 'grayscale(1)' });
+  });
+
   it('bounds zoom, resets to fit, and navigates issues', () => {
     openDialog();
     const zoomIn = screen.getByRole('button', { name: 'Zoom in' });

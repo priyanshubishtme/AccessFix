@@ -1,0 +1,41 @@
+import { z } from 'zod';
+import { Impact } from './common.js';
+
+const count = z.number().int().nonnegative();
+const bucket = z.object({ fail: count, pass: count });
+
+/** See docs/06-scoring-spec.md for the formula. */
+export const Score = z.object({
+  /** 0-100, or null when no in-scope rule applied (rendered "N/A"). */
+  value: z.number().int().min(0).max(100).nullable(),
+  formulaVersion: z.literal(1),
+  standard: z.string(),
+  rulesChecked: count,
+  elementsChecked: count,
+  failingElements: count,
+  weightedFailures: count,
+  weightedTotal: count,
+  byImpact: z.object({ critical: bucket, serious: bucket, moderate: bucket, minor: bucket }),
+  /** Every scored rule, so the UI can show the formula with real numbers. */
+  rules: z.array(
+    z.object({
+      ruleId: z.string(),
+      impact: Impact,
+      weight: count,
+      pass: count,
+      fail: count,
+      /** Display only. Older stored scans do not have it. */
+      wcag: z
+        .object({
+          criteria: z.array(z.string()),
+          level: z.string().nullable(),
+          refs: z.array(z.object({ sc: z.string(), name: z.string(), level: z.string().nullable(), url: z.string() })),
+        })
+        .optional(),
+    }),
+  ),
+  /** Kept out of the score on purpose. */
+  manualReviewCount: count,
+  advisoryCount: count,
+  engine: z.object({ axeVersion: z.string() }),
+});

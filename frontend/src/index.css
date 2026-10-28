@@ -1,0 +1,145 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* All values are injected from src/styles/tokens.js before React renders. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-critical: var(--critical);
+  --color-serious: var(--serious);
+  --color-moderate: var(--moderate);
+  --color-minor: var(--minor);
+  --color-verified: var(--verified);
+  --spacing: var(--space);
+  --text-xs: var(--type-xs);
+  --text-sm: var(--type-label);
+  --text-base: var(--type-body);
+  --text-lg: var(--type-lg);
+  --text-xl: var(--type-xl);
+  --text-2xl: var(--type-title);
+  --text-3xl: var(--type-3xl);
+  --text-4xl: var(--type-4xl);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-panel);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-hero);
+  --shadow-card: var(--elevation-card);
+  --shadow-popover: var(--elevation-floating);
+  --default-transition-duration: var(--motion-standard);
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    font-size: var(--type-body);
+    line-height: 1.6;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.page-enter {
+  animation: page-enter 160ms ease-out both;
+}
+
+@keyframes page-enter {
+  from {
+    transform: translateY(4px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.print-hidden {
+  display: initial;
+}
+
+@media print {
+  :root,
+  .dark {
+    color-scheme: light;
+  }
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    font-size: 11pt;
+  }
+  header,
+  footer,
+  .print-hidden,
+  #main > :not(.page-enter) {
+    display: none !important;
+  }
+  #main {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .page-enter,
+  .print-report {
+    animation: none !important;
+  }
+  .print-report {
+    color: #111 !important;
+  }
+  .print-report section,
+  .print-report article {
+    break-inside: avoid;
+    border-color: #bbb !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .print-report a {
+    color: #111 !important;
+    text-decoration: underline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

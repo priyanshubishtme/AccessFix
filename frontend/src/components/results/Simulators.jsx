@@ -1,0 +1,180 @@
+import { useEffect, useId, useState } from 'react';
+import { TriangleAlert } from 'lucide-react';
+import { announcedName, keyboardSentence } from '@/lib/markLayout.js';
+
+/** Approximate matrices. These recolor our screenshot only. They are not a diagnosis. */
+const MATRICES = {
+  protanopia: '0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0',
+  deuteranopia: '0.625 0.375 0 0 0  0.700 0.300 0 0 0  0 0.300 0.700 0 0  0 0 0 1 0',
+  tritanopia: '0.950 0.050 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0',
+};
+
+const VIEWS = [
+  { id: 'none', label: 'Original colors' },
+  { id: 'protanopia', label: 'Red-weak (Protanopia)' },
+  { id: 'deuteranopia', label: 'Green-weak (Deuteranopia)' },
+  { id: 'tritanopia', label: 'Blue-weak (Tritanopia)' },
+];
+
+/**
+ * @param {{ onFilter: (filter: string | null) => void,
+ *   violations?: { id: string, title: string, node?: { evidence?: { fgColor?: string, bgColor?: string | null } } }[] }} props
+ */
+export function Simulators({ onFilter }) {
+  const [view, setView] = useState('none');
+  const filterId = useId().replace(/:/g, '');
+  const filter = view === 'none' ? null : `url(#${filterId}-${view})`;
+
+  useEffect(() => {
+    onFilter(filter);
+  }, [filter, onFilter]);
+
+  return (
+    <div id="simulators">
+      <h3 className="text-sm font-semibold">Color appearance</h3>
+      <svg width="0" height="0" className="absolute" aria-hidden="true">
+        {Object.entries(MATRICES).map(([id, values]) => (
+          <filter key={id} id={`${filterId}-${id}`}>
+            <feColorMatrix type="matrix" values={values} />
+          </filter>
+        ))}
+      </svg>
+      <div role="group" aria-label="Approximate color view" className="mt-2 flex flex-wrap gap-2">
+        {VIEWS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={view === item.id}
+            className={`min-h-10 rounded-md border px-2 text-sm ${
+              view === item.id ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'
+            }`}
+            onClick={() => setView(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 max-w-[65ch] text-sm text-muted-foreground">
+        This filter shows how these colors may appear. It is not a second scan.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * @param {{ marks: { violationId: string, name?: string, role?: string, n?: number | null }[],
+ *   numberById?: Record<string, number> }} props
+ */
+export function ScreenReaderTable({ marks, numberById = {} }) {
+  return (
+    <div id="screen-reader">
+      <h3 className="text-sm font-semibold">What a screen reader announces</h3>
+      {marks.length === 0 ? (
+        <p className="mt-1 max-w-[65ch] text-sm text-muted-foreground">No elements were measured on this screenshot.</p>
+      ) : (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <caption className="sr-only">Accessible names measured on the screenshot</caption>
+            <thead>
+              <tr className="border-b">
+                <th scope="col" className="py-2 pr-3 font-semibold">
+                  Number
+                </th>
+                <th scope="col" className="py-2 pr-3 font-semibold">
+                  Element
+                </th>
+                <th scope="col" className="py-2 pr-3 font-semibold">
+                  A screen reader announces
+                </th>
+                <th scope="col" className="py-2 font-semibold">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {marks.map((mark) => (
+                <NameRow key={mark.violationId} mark={mark} number={numberById[mark.violationId] ?? mark.n} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NameRow({ mark, number }) {
+  const spoken = announcedName(mark);
+  const [open, setOpen] = useState(false);
+  return (
+    <tr className="border-b align-top">
+      <td className="py-2 pr-3 tabular-nums">{number ?? '—'}</td>
+      <td className="py-2 pr-3">{spoken.element}</td>
+      <td className="max-w-[65ch] py-2 pr-3">
+        {open && spoken.full ? spoken.full : spoken.text}
+        {spoken.truncated && (
+          <button type="button" className="ml-2 min-h-10 text-link underline" onClick={() => setOpen((value) => !value)}>
+            {open ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </td>
+      <td className="py-2">
+        {spoken.missing ? (
+          <span className="inline-flex items-center gap-1 text-serious">
+            <TriangleAlert aria-hidden="true" className="size-4" />
+            Name missing
+          </span>
+        ) : (
+          'Named'
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * @param {{ keyboard?: { id: string, url?: string, message: string, confidence: string }[],
+ *   focusOrder?: { tag: string, name: string, focusVisible: boolean }[] }} props
+ */
+export function KeyboardPanel({ keyboard = [], focusOrder = [] }) {
+  return (
+    <div id="keyboard">
+      <h3 className="text-sm font-semibold">Keyboard</h3>
+      {keyboard.length === 0 ? (
+        <p className="mt-1 max-w-[65ch] text-sm text-muted-foreground">
+          The Tab walk finished without a recorded problem. We press Tab up to 50 times and flag controls that were never reached, or that took focus with no visible outline. Those hints do not change the score. A person still has to try the page with a keyboard.
+        </p>
+      ) : (
+        <ul className="mt-1 max-w-[65ch] list-disc space-y-1 pl-5 text-sm">
+          {keyboard.map((check) => (
+            <li key={`${check.url ?? ''}-${check.id}`}>
+              {keyboardSentence(check.message)}{' '}
+              <span className="text-muted-foreground">({check.confidence} confidence)</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {focusOrder.length > 0 && (
+        <div className="mt-4">
+          <h4 className="text-sm font-semibold">Tab order recorded</h4>
+          <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">
+            Sequence of the Tab walk on this page, up to 50 stops. Names are what the page exposed — we do not invent
+            labels. This is not a complete keyboard accessibility audit.
+          </p>
+          <ol className="mt-3 max-w-[70ch] space-y-1.5 text-sm">
+            {focusOrder.map((stop, index) => (
+              <li key={`${stop.tag}-${index}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="tabular w-6 shrink-0 font-semibold text-muted-foreground">{index + 1}.</span>
+                <code className="font-mono text-xs">{stop.tag}</code>
+                <span className="min-w-0 break-words">{stop.name || '(no accessible name recorded)'}</span>
+                <span className={stop.focusVisible ? 'text-verified' : 'text-serious'}>
+                  {stop.focusVisible ? 'visible focus' : 'no visible focus'}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}

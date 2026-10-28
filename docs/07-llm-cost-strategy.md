@@ -23,13 +23,13 @@ checks fall back to the rule template.
 
 | Limit                       | Default                                                                                                                                                                                                               | Config                                     |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Tokens per scan (all calls) | 8,000                                                                                                                                                                                                                 | `LLM_TOKEN_BUDGET_PER_SCAN`                |
+| Tokens per scan (all calls) | 0 (unlimited unless configured)                                                                                                                                                                                      | `LLM_TOKEN_BUDGET_PER_SCAN`                |
 | Tokens per client IP / day  | 100,000 (in-memory; resets on process restart)                                                                                                                                                                        | `LLM_TOKEN_BUDGET_PER_IP_DAY`              |
 | Max output tokens per call  | 600                                                                                                                                                                                                                   | constant                                   |
 | Max items per batch         | 10                                                                                                                                                                                                                    | constant                                   |
 | Element snippet per item    | ≤ 600 chars, attributes allow-listed (`id`, `class`, `name`, `type`, `href` path, `src` filename, `alt`, `title`, `placeholder`, `aria-*`, `role`)                                                                    | constant                                   |
 | Context per item            | ≤ 400 chars of nearest visible text (heading, caption, surrounding sentence)                                                                                                                                          | constant                                   |
-| Images for vision           | Already captured during the scan only. Skip `data:` URLs and bodies over 80 KB. At most 5 images per batch; leftovers fall back to text. Never fetched at repair time, never stored, never logged, never in `/usage`. | `MAX_VISION_BYTES`, `MAX_VISION_PER_BATCH` |
+| Images for vision           | Captured scan resources only; selected when `LLM_MODEL_VISION` is configured. Never fetched at repair time.                                                                                                         | `LLM_MODEL_VISION`                          |
 
 Before every call, the client estimates tokens (≈ chars / 4 + fixed prompt overhead) and the
 per-image cost. If the estimate would exceed the remaining budget, the batch is shrunk. Items
@@ -78,8 +78,7 @@ the rest of the batch is kept.
 | Strong     | `LLM_MODEL_STRONG` | One retry when the cheap result is low-confidence or invalid JSON. Counts against the same 8,000/scan budget. If unset, the retry uses cheap. |
 | None       | —                  | Everything else                                                                                                                               |
 
-If no vision model is configured, alt text uses the cheap model with filename + context and is
-marked low confidence.
+If no vision model is configured, image alt text uses the configured text model with filename + context and is marked low confidence. The UI currently lacks a complete status surface for rate limit, budget reached, invalid key, and timeout; those states fall back to templates and are tracked as deferred in `docs/15-ui-audit.md`. A live provider request was not run without a configured key.
 
 Behind a reverse proxy, set `TRUST_PROXY` (on by default in production) so `req.ip` is the
 client, not the proxy. Otherwise every visitor shares one daily budget.
@@ -132,8 +131,7 @@ economics (doc 02) uses the same formula with placeholder values.
 
 ## Privacy
 
-Only the allow-listed snippet, short context and (for vision) a captured image already in the
-scan cache are sent. Page data is wrapped in `<untrusted>` delimiters. Drafts must be plain words:
+Only the allow-listed snippet, short context and (when a vision model is configured) a captured image already in the scan cache are sent. Page data is wrapped in `<untrusted>` delimiters. Drafts must be plain words:
 HTML tags, URLs, TODO placeholders, and common prompt-injection or instruction phrases are
 rejected. Full pages, form values, cookies and query strings are never sent. A self-hosted model
 (Ollama via the OpenAI-compatible adapter) keeps everything on-premises.

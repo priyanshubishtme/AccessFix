@@ -10,7 +10,7 @@ Every error uses the envelope in [03-architecture.md#error-model](03-architectur
 
 | Method | Path                 | Purpose                                        | Success                     | Status                            |
 | ------ | -------------------- | ---------------------------------------------- | --------------------------- | --------------------------------- |
-| `GET`  | `/health`            | Liveness, dependency status, limits            | `200 HealthResponse`        | Live                              |
+| `GET`  | `/health`            | Liveness, dependency status, limits            | `200 HealthResponse`        | Live (`checks.storeStatus` reports memory/Mongo availability) |
 | `POST` | `/scans`             | Validate input and start a scan (HTML or URL)  | `202 ScanAccepted`          | Live (Phase 1)                    |
 | `GET`  | `/scans/:id`         | Poll a scan: `stage`, then results             | `200 Scan`                  | Live (Phase 1)                    |
 | `GET`  | `/usage`             | Scan count and token usage since process start | `200 UsageResponse`         | Live (process totals; no UI page) |
@@ -21,7 +21,7 @@ Every error uses the envelope in [03-architecture.md#error-model](03-architectur
 | `GET`  | `/scans/:id/report`  | Report as `json`, `md` or `html`               | `200`                       | Live (Phase 4). HTML is escaped, script-free, CSP + attachment. |
 | `GET`  | `/scans/:id/events`  | Engine log as server-sent events               | `200 text/event-stream`     | Live (Phase A). Headers flush immediately. Polling still owns the score. |
 | `GET`  | `/scans/:id/screenshot` | Viewport JPEG, `?which=before` or `after`  | `200 image/jpeg`            | Live (Phase A). Memory cache, 1 hour. `Cross-Origin-Resource-Policy: cross-origin`. |
-| `GET`  | `/scans/:id/source`  | Original HTML as plain text                    | `200 text/plain`            | Live (Phase A). `nosniff`. `410 SOURCE_EXPIRED` after one hour. |
+| `GET`  | `/scans/:id/source`  | Download original HTML                         | `200 text/html` attachment  | Live. `nosniff`. `410 SOURCE_EXPIRED` after one hour. |
 
 Until a route is implemented it returns `501 NOT_IMPLEMENTED`. Validation still runs first, so
 clients can integrate against the real error behaviour today.
@@ -64,6 +64,8 @@ the `accessfix.sid` cookie must send `x-accessfix-request: 1`.
 `tokenCeiling` (`ok` or `reached`), and `authenticatedScanning` (`on` or `disabled: no key`).
 Full limits: [12-phase-b.md](12-phase-b.md).
 
+For HTML input, `input.baseUrl` is an optional HTTP(S) URL used to resolve relative resources in pasted HTML. Scan responses include additive `pages` and `discoveryLog` arrays for crawl results; each discovery record contains `url`, `depth`, `linkedFrom`, `status` (`seed`, `queued`, `scanned`, `skipped`), and nullable `reason`. The discovery log describes traversal and does not change page selection or issue scoring.
+
 ## Requests
 
 ```js
@@ -71,7 +73,7 @@ Full limits: [12-phase-b.md](12-phase-b.md).
 CreateScanBody = z.object({
   input: z.discriminatedUnion('type', [
     // <= MAX_HTML_BYTES (413), not binary (422 UNSUPPORTED_INPUT), NUL bytes stripped
-    z.object({ type: z.literal('html'), html: z.string().min(1) }),
+    z.object({ type: z.literal('html'), html: z.string().min(1), baseUrl: z.url({ protocol: /^https?$/ }).max(2048).optional() }),
     // http(s) only, no credentials, must not resolve to a private/reserved address (422 URL_BLOCKED)
     z.object({ type: z.literal('url'), url: z.url({ protocol: /^https?$/ }).max(2048) }),
   ]),

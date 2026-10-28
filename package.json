@@ -16,6 +16,7 @@
     "build": "npm run build -w frontend",
     "test": "npm run test --workspaces --if-present",
     "test:mongo": "npm run test:mongo --workspace backend",
+    "smoke": "node scripts/smoke.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

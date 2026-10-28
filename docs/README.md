@@ -16,6 +16,9 @@ Start here. Read in order; each doc is short.
 | 10  | [Deploy](10-deploy.md)                              | Static UI + Chromium API, Mongo, Docker                     |
 | 11  | [Demo script](11-demo-script.md)                    | Three-minute walkthrough                                    |
 | 12  | [Phase B: crawl, accounts, quotas](12-phase-b.md)   | What shipped, and the threat model for it                   |
+| 13  | [Inputs and crawl](13-inputs-and-crawl.md)           | What is analyzed, crawl discovery, asset and download limits |
+| 14  | [UI design system](14-ui-design-system.md)           | Tokens, typography, themes, and interface rules             |
+| 15  | [Decisions](15-decisions.md) / [UI audit](15-ui-audit.md) | Product decisions and demo-readiness audit             |
 
 ## Decisions locked in Phase 0
 
@@ -26,8 +29,8 @@ Start here. Read in order; each doc is short.
 | Repair order | Deterministic rule fixer, then LLM (judgment only, within budget), then template, then "needs manual review".                 |
 | Verification | Apply to a copy, re-run axe; "verified" only if the violation is gone and nothing regressed.                                  |
 | Score        | `100 * (1 - Σ w·fail / Σ w·(pass+fail))`, fixed per-rule weights 10/7/3/1, needs-review excluded, "N/A" when nothing applies. |
-| LLM          | One OpenAI-compatible adapter behind a provider interface. Default `LLM_PROVIDER=none`. Cheap / vision / optional strong.    |
-| Store        | Repository interface; in-memory adapter first, MongoDB Atlas in Phase 4. App runs without Mongo.                              |
+| LLM          | OpenAI-compatible adapter with mock and none modes. Default `LLM_PROVIDER=none`; drafts require human acceptance.             |
+| Store        | Repository interface; memory by default, optional MongoDB for persistence. App runs without Mongo.                             |
 | Repo         | npm workspaces, ES modules, Vitest everywhere, ESLint 9 + Prettier + jsx-a11y.                                                |
 | Pricing      | Free / Pro $19 / Team $79 / Enterprise custom. Hypotheses, not validated.                                                     |
 
@@ -36,12 +39,12 @@ Start here. Read in order; each doc is short.
 | Phase | Scope                                                                                                                                                                                   | Exit criterion                                                                              | Status |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
 | 0     | Docs, scaffold, contracts                                                                                                                                                               | A new teammate can say what to build, why, and what is out of scope                         | Done   |
-| 1     | Scan pipeline: pasted HTML **and URL** (SSRF-hardened), browser pool, axe + our checks, normalizer, plain-language templates, repository (memory + Mongo stub), scan UI with all states | The broken sample returns the expected violations in under 5 s; hostile input never crashes | Done   |
+| 1     | Scan pipeline: pasted HTML **and URL** (SSRF-hardened), browser pool, axe + our checks, normalizer, plain-language templates, repository interface and scan UI | The broken sample returns the expected violations in under 5 s; hostile input never crashes | Done   |
 | 2     | Repairs (deterministic first), verification by re-scan, score, before/after view                                                                                                        | Verified fixes raise the score with zero regressions, LLM off                               | Done   |
 | 3     | LLM provider, token accounting, cache, batching, rate limiting                                                                                                                          | Tokens per verified fix shown; app still works with LLM off                                 | Done   |
-| 4     | Mongo adapter, jobs, report, `/business`, history + trend, self-scan proof, deploy notes                                                                                                 | Fresh clone runs with `npm run dev`; Mongo contract tests pass when a URI is set            | Done   |
+| 4     | Optional Mongo adapter, jobs, report, `/business`, history + trend, deploy notes                                                                                                         | Fresh clone runs with `npm run dev`; contract suite targets memory and Mongo                | Done   |
 | B     | Crawl one host, accounts, private scans, share links, encrypted login state, quotas off by default                                                                                       | Signed-in crawl streams pages one by one; a share link cannot apply or cancel              | Done   |
-| 5     | Polish, PDF audit pack, GitHub Action, source mapping                                                                                                                                     | Out of this hackathon                                                                       |        |
+| 5     | Polish, PDF audit pack, GitHub Action, source mapping                                                                                                                                     | Future scope; current audit limits are in doc 15                                             |        |
 
 ## Deliberately out of scope (until the core loop works)
 

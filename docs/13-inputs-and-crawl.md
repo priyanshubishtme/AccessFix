@@ -26,6 +26,8 @@ The first completed response pins the crawl to its final host. Later off-host di
 
 Each crawl now returns a discovery log with the URL, depth, linking page, status, and skip reason. The results page exposes it as a discovery map. It records discovered links, including duplicate and off-host skips; it is not a JavaScript router crawl.
 
+The crawl map is a keyboard-operable disclosure and can filter its recorded outcomes. Completed page rows include score and issue counts where available. The log is additive to the existing `pages` result field and does not change crawl selection or scoring.
+
 | You might expect | What happens |
 | --- | --- |
 | JavaScript routes | Only links present as rendered `a[href]` are discovered. Client-side route changes without links are not enumerated. |
@@ -36,4 +38,4 @@ Each crawl now returns a discovery log with the URL, depth, linking page, status
 
 ## Asset and download behavior
 
-An optional base URL on pasted HTML lets relative `src`, `srcset`, stylesheet, and CSS URL references resolve during browser rendering. Each resulting browser request remains subject to the network guard and its SSRF checks. The preview remains a fixed viewport capture; an asset outside the captured viewport may not appear. Original and patched HTML can be downloaded for a single scan; crawls have a ZIP containing page sources. A separate standalone CSS lint, complete offline asset bundle, and standalone diff-download endpoint are not implemented.
+An optional base URL on pasted HTML lets relative `src`, `srcset`, stylesheet, and CSS URL references resolve during browser rendering. Each resulting browser request remains subject to the network guard and its SSRF checks. The preview remains a fixed viewport capture; an asset outside the captured viewport may not appear. `GET /scans/:id/source` downloads the original HTML, and `GET /scans/:id/patched.html` downloads the patched HTML. The crawl archive is `GET /scans/:id/pages.zip`. A per-scan menu for both files, a per-page crawl download menu, unified diff download, complete offline asset bundle, and explicit unresolved-asset inventory are not implemented. Uploaded CSS is inlined before scanning, so original file formatting and distinct CSS-file output are not preserved. Standalone CSS linting is also not implemented.

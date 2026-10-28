@@ -322,7 +322,7 @@ Lighthouse is not in the pipeline. A future comparison column could show a Light
 
 API process in production: the root `Dockerfile`, based on `mcr.microsoft.com/playwright` so Chromium is already installed. Start command is `node src/server.js`. It listens on `PORT` (Render sets this). `TRUST_PROXY=true` in production so per-IP limits see the visitor, not the proxy.
 
-UI in production: `npm run build -w frontend`. Publish `frontend/dist`. Prefer one host that proxies `/api` to the API, and leave `VITE_API_BASE_URL` unset, so the session cookie can stay `SameSite=Lax`. A split host sets `VITE_API_BASE_URL` at **build** time (no trailing slash) and `COOKIE_SAMESITE=none`. The host must serve `index.html` for `/history`, `/business`, `/login`, `/projects`, `/scans/:id/report`, and `/shares/:token`.
+UI in production: `npm run build -w frontend`. Publish `frontend/dist`. A true same-origin reverse proxy can route `/api` to the API and use `COOKIE_SAMESITE=lax`. Render Static Site rewrites do not proxy to a separate service; a split host sets `VITE_API_BASE_URL` at **build** time (no trailing slash), configures exact `CORS_ORIGINS`, and may need `COOKIE_SAMESITE=none` over HTTPS. The host must serve `index.html` for `/history`, `/business`, `/login`, `/projects`, `/scans/:id/report`, and `/shares/:token`. See [docs/10-deploy.md](docs/10-deploy.md).
 
 Do not run the API on a platform that freezes the process between requests. The browser pool and the source cache assume a long-lived process.
 
@@ -345,7 +345,7 @@ The results column, after a scan, contains:
 - Issues grouped by rule, with severity icon and text, WCAG chip, who it affects, HTML snippet.
 - Suggest fixes, then a diff per repair, Accept / Reject on AI drafts, a text field on templates.
 - Apply verified fixes, then resolved / remaining / regressions.
-- Download patched HTML.
+- Download original or patched HTML. A standalone unified diff and complete offline asset archive are not implemented.
 - Preview patched page: one `<iframe sandbox="" srcdoc={patchedHtml}>`, inside a disclosure, **after** apply only. Empty `sandbox` means scripts, forms, and same-origin access are off.
 - Efficiency panel when a model ran: tokens used, tokens saved, cache hits, and the “one call per issue” comparison.
 
@@ -399,11 +399,11 @@ Iframe content and closed shadow roots are already reported as unpatchable in `r
 
 ### 8.5 Auth, accounts, and gated pages
 
-No login exists. History is local. Security of a report is the unguessable id plus the 30-day TTL.
+Accounts, project history, private scans, and read-only share links exist. Signed-out reports are capability links with a 30-day default TTL. Password reset, email verification, and billing are not built.
 
 Later, in order:
 
-- Accounts, then API keys stored as hashes, `Authorization: Bearer` on the same routes, `/usage` per key. The repository method `recordUsage` is already there. Mongo is the store this needs; the adapter exists.
+- API keys stored as hashes, `Authorization: Bearer` on the same routes, and `/usage` per key are future work. The optional Mongo adapter supports the existing account and scan persistence.
 - Gated sites: a per-scan Playwright `storageState` (cookies and localStorage) passed in `ScanOptions.auth`, encrypted, short TTL, never logged, deleted after the scan. This waits on accounts and a security review. A self-hosted runner is the safer place for real customer credentials.
 - The pricing table’s seats, SSO, and PDF packs stay hypotheses until those exist.
 

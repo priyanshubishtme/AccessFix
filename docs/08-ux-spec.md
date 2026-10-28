@@ -1,6 +1,6 @@
 # 08. UX spec
 
-## User journey (Phase 1)
+## User journey (current)
 
 1. **Paste.** A large code field with a "Try a sample" button that loads a deliberately broken
    page, for demos.
@@ -14,8 +14,7 @@
    review** and must be Accepted before Apply; Reject restores the TODO: template.
 5. **Verify.** Select fixes (all deterministic fixes are pre-selected) and press "Apply and
    re-scan". Each fix is marked Verified, Still failing or Regressed.
-6. **Take it home.** The before/after score, the patched HTML (copy or download), the
-   manual-review checklist, and a shareable report (`/scans/:id/report`).
+6. **Compare and export.** The before/after workbench has slider, side-by-side and single-image modes, issue marks, a full-screen viewer, original and patched HTML downloads, and a report (`/scans/:id/report`). Some requested export formats (standalone unified diff and complete offline asset bundle) are not implemented yet; see [13-inputs-and-crawl.md](13-inputs-and-crawl.md).
 
 ## Screens
 
@@ -26,7 +25,9 @@
 | Projects  | `/projects`         | B     | Saved scans for the signed-in account.                                                                              |
 | Report    | `/scans/:id/report` | 4     | Shareable report with remaining/resolved/manual **and** the Checks table. Expires ~30 days.                         |
 | History   | `/history`          | 4     | This browser’s scans + score trend (Recharts + data table)                                                          |
-| Business  | `/business`         | 4–B   | Plans, live limits, and the commands that turn quotas and Pro on.                                                   |
+| Business  | `/business`         | 4–B   | Public problem, solution, honest limits, illustrative plans, and a demo call to action. Operations stay in deployment docs. |
+
+The theme follows the operating-system preference by default, with Light and Dark choices. AI drafts are optional and require review before Apply. Password reset and email verification are not built. The interface describes automated coverage and does not claim full WCAG conformance.
 
 ### Workspace layout
 

@@ -89,6 +89,10 @@ Scans saved before Phase B have no `ownerId`. They stay capability links. Nothin
 to an account. New fields (`pages`, `keyboard`, `partial`, `authUsed`) default to empty, so old
 documents still parse.
 
+## Mongo persistence and retention
+
+`STORE=memory` remains the default. With `STORE=mongo`, scan records and crawl pages are stored in separate collections; indexes include unique scan IDs, timestamps, owner/timestamp lookup, and TTL cleanup. Repair, verification, session, and share collections have expiry indexes. Documents carry `schemaVersion`; startup applies the small idempotent collection/index migration before serving traffic. The API health response includes `checks.storeStatus`, and shutdown closes the account and scan clients. Configure `MONGODB_MAX_POOL_SIZE` and `MONGODB_SERVER_SELECTION_TIMEOUT_MS` for the deployment. Mongo must not contain screenshot bytes or full HTML source; those remain in the bounded process cache. Back up Atlas independently and test report access after an API restart before relying on persistence.
+
 ## Keyboard and SPA wait
 
 After axe, the scanner presses Tab up to `KEYBOARD_MAX_STOPS` (50). The result is

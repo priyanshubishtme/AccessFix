@@ -5,7 +5,7 @@ preview, and see a **verified** before/after score. Fix-first, no overlays, work
 
 Hackathon problem statement PS 11: "Web Accessibility Auditor + Fix-Suggester".
 
-> **Status: Phase B.** Paste HTML or a URL, or crawl one host (signed in). Verified source fixes,
+> **Status: demo-ready polish in progress.** Paste HTML or a URL, or crawl one host (signed in). Verified source fixes,
 > optional AI drafts, accounts, private scans, share links, and the results workbench. Quotas are
 > off unless `QUOTAS_ENABLED=true`. Memory store by default; Mongo when you set `STORE=mongo`.
 > The full map is [`project.md`](project.md). Crawl and auth limits are in
@@ -42,7 +42,11 @@ the UI shows a warning badge while it is on.
 | `npm run lint`                    | ESLint 9 (flat config, `jsx-a11y` strict on the frontend)                    |
 | `npm run format` / `format:check` | Prettier                                                                     |
 | `npm run build`                   | Production build of the frontend                                             |
+| `npm run test:mongo`              | Mongo repository contract and persistence tests (needs local Mongo for integration) |
+| `npm run smoke -- <api-url>`      | Health check, one scan, and one report against a running API                  |
 | `npm run browsers:install`        | Download Playwright Chromium                                                 |
+
+Deployment steps and the Render setup are in [`docs/10-deploy.md`](docs/10-deploy.md). The current audit, screenshots, and deferred items are in [`docs/15-ui-audit.md`](docs/15-ui-audit.md).
 
 ## How a scan works
 

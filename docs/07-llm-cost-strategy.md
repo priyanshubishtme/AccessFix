@@ -14,16 +14,21 @@ never decides whether a fix is verified, and never writes structural patches.
 | Same signature already answered (cache or dedupe) | No                                                                   |
 | `useLlm: false` in the request                    | No                                                                   |
 
+Prompt text and the user-data envelope are versioned under `backend/src/services/llm/prompts/`.
+Every provider call requests a JSON object and validates it with the `BatchOut` Zod schema. A bad
+JSON or invalid batch receives one repair attempt; drafts that still fail validation or safety
+checks fall back to the rule template.
+
 ## Budgets and size limits
 
-| Limit                       | Default                                                                                                                                            | Config                      |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| Tokens per scan (all calls) | 8,000                                                                                                                                              | `LLM_TOKEN_BUDGET_PER_SCAN` |
-| Tokens per client IP / day  | 100,000 (in-memory; resets on process restart)                                                                                                     | `LLM_TOKEN_BUDGET_PER_IP_DAY` |
-| Max output tokens per call  | 600                                                                                                                                                | constant                    |
-| Max items per batch         | 10                                                                                                                                                 | constant                    |
-| Element snippet per item    | ≤ 600 chars, attributes allow-listed (`id`, `class`, `name`, `type`, `href` path, `src` filename, `alt`, `title`, `placeholder`, `aria-*`, `role`) | constant                    |
-| Context per item            | ≤ 400 chars of nearest visible text (heading, caption, surrounding sentence)                                                                       | constant                    |
+| Limit                       | Default                                                                                                                                                                                                               | Config                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Tokens per scan (all calls) | 8,000                                                                                                                                                                                                                 | `LLM_TOKEN_BUDGET_PER_SCAN`                |
+| Tokens per client IP / day  | 100,000 (in-memory; resets on process restart)                                                                                                                                                                        | `LLM_TOKEN_BUDGET_PER_IP_DAY`              |
+| Max output tokens per call  | 600                                                                                                                                                                                                                   | constant                                   |
+| Max items per batch         | 10                                                                                                                                                                                                                    | constant                                   |
+| Element snippet per item    | ≤ 600 chars, attributes allow-listed (`id`, `class`, `name`, `type`, `href` path, `src` filename, `alt`, `title`, `placeholder`, `aria-*`, `role`)                                                                    | constant                                   |
+| Context per item            | ≤ 400 chars of nearest visible text (heading, caption, surrounding sentence)                                                                                                                                          | constant                                   |
 | Images for vision           | Already captured during the scan only. Skip `data:` URLs and bodies over 80 KB. At most 5 images per batch; leftovers fall back to text. Never fetched at repair time, never stored, never logged, never in `/usage`. | `MAX_VISION_BYTES`, `MAX_VISION_PER_BATCH` |
 
 Before every call, the client estimates tokens (≈ chars / 4 + fixed prompt overhead) and the
@@ -66,12 +71,12 @@ the rest of the batch is kept.
 
 ## Model tiering
 
-| Tier       | Config             | Used for                                        |
-| ---------- | ------------------ | ----------------------------------------------- |
-| Cheap text | `LLM_MODEL_CHEAP`  | Link/button names, label text, `title`, wording |
-| Vision     | `LLM_MODEL_VISION` | Informative image alt text from captured scan resources |
+| Tier       | Config             | Used for                                                                                                                                      |
+| ---------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cheap text | `LLM_MODEL_CHEAP`  | Link/button names, label text, `title`, wording                                                                                               |
+| Vision     | `LLM_MODEL_VISION` | Informative image alt text from captured scan resources                                                                                       |
 | Strong     | `LLM_MODEL_STRONG` | One retry when the cheap result is low-confidence or invalid JSON. Counts against the same 8,000/scan budget. If unset, the retry uses cheap. |
-| None       | —                  | Everything else                                 |
+| None       | —                  | Everything else                                                                                                                               |
 
 If no vision model is configured, alt text uses the cheap model with filename + context and is
 marked low confidence.
@@ -129,8 +134,9 @@ economics (doc 02) uses the same formula with placeholder values.
 
 Only the allow-listed snippet, short context and (for vision) a captured image already in the
 scan cache are sent. Page data is wrapped in `<untrusted>` delimiters. Drafts must be plain words:
-HTML tags and URLs are rejected. Full pages, form values, cookies and query strings are never
-sent. A self-hosted model (Ollama via the OpenAI-compatible adapter) keeps everything on-premises.
+HTML tags, URLs, TODO placeholders, and common prompt-injection or instruction phrases are
+rejected. Full pages, form values, cookies and query strings are never sent. A self-hosted model
+(Ollama via the OpenAI-compatible adapter) keeps everything on-premises.
 
 `LLM_PROVIDER=mock` is for CI: canned drafts, token counts from prompt size, `tokensSaved > 0`
 versus the naive estimate. `LLM_PROVIDER=none` or an empty `LLM_API_KEY` produces the same

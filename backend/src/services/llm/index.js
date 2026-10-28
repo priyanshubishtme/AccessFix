@@ -103,10 +103,11 @@ export function createLlmGateway(config, deps = {}) {
     }
   }
 
-  async function callModel(model, items, { scanLeft, ip, ownerKey, plan }) {
+  async function callModel(model, items, { scanLeft, ip, ownerKey, plan, repairJson = false }) {
     const visionCount = items.filter((t) => t.image).length;
     const est = estimateTokens(items, { vision: visionCount });
-    if (Number.isFinite(scanLeft.tokens) && est > scanLeft.tokens) return { kind: 'over-budget', est: 0 };
+    if (Number.isFinite(scanLeft.tokens) && est > scanLeft.tokens)
+      return { kind: 'over-budget', est: 0 };
     const who = ownerKey || (ip ? `ip:${ip}` : '');
     if (meter) {
       const tierCap = !quotasOn
@@ -116,7 +117,13 @@ export function createLlmGateway(config, deps = {}) {
           : config.TOKEN_DAILY_OVERRIDE > 0
             ? config.TOKEN_DAILY_OVERRIDE
             : (config.FREE_TOKENS_DAY ?? 0);
-      const gate = await meter.allowTokens({ est, quotasEnabled: quotasOn, ceiling, tierCap, ownerKey: who });
+      const gate = await meter.allowTokens({
+        est,
+        quotasEnabled: quotasOn,
+        ceiling,
+        tierCap,
+        ownerKey: who,
+      });
       if (gate === 'ceiling') return { kind: 'ceiling', est: 0 };
       if (gate === 'over-budget') return { kind: 'over-budget', est: 0 };
     } else if (quotasOn && dailyCap > 0) {
@@ -129,7 +136,7 @@ export function createLlmGateway(config, deps = {}) {
 
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userContent(items) },
+      { role: 'user', content: userContent(items, repairJson) },
     ];
     let lastErr;
     for (let attempt = 0; attempt <= 3; attempt += 1) {
@@ -141,7 +148,9 @@ export function createLlmGateway(config, deps = {}) {
         const used = prompt + completion;
         if (!meter && quotasOn) daySlot(ip).used += used;
         if (meter) await meter.recordTokens({ n: used, ownerKey: who });
-        scanLeft.tokens = Number.isFinite(scanLeft.tokens) ? Math.max(0, scanLeft.tokens - used) : scanLeft.tokens;
+        scanLeft.tokens = Number.isFinite(scanLeft.tokens)
+          ? Math.max(0, scanLeft.tokens - used)
+          : scanLeft.tokens;
         totals.calls += 1;
         totals.promptTokens += prompt;
         totals.completionTokens += completion;
@@ -153,7 +162,10 @@ export function createLlmGateway(config, deps = {}) {
       } catch (err) {
         lastErr = err;
         if (err?.status === 429) totals.count429 += 1;
-        const retryable = err?.status === 429 || (err?.status >= 500 && err?.status < 600) || err?.name === 'AbortError';
+        const retryable =
+          err?.status === 429 ||
+          (err?.status >= 500 && err?.status < 600) ||
+          err?.name === 'AbortError';
         if (!retryable || attempt === 3) {
           circuit.failure();
           logger?.warn?.({ err: err?.message, status: err?.status }, 'llm call failed');
@@ -212,9 +224,11 @@ export function createLlmGateway(config, deps = {}) {
     }
 
     if (!provider.enabled) {
-      for (const t of pending) results.set(t.key, { text: null, confidence: 'low', status: 'error' });
+      for (const t of pending)
+        results.set(t.key, { text: null, confidence: 'low', status: 'error' });
     } else if (circuit.status() === 'open') {
-      for (const t of pending) results.set(t.key, { text: null, confidence: 'low', status: 'circuit-open' });
+      for (const t of pending)
+        results.set(t.key, { text: null, confidence: 'low', status: 'circuit-open' });
     } else {
       const textItems = pending.filter((t) => t.tier !== 'vision');
       const visionItems = pending.filter((t) => t.tier === 'vision').slice(0, MAX_VISION_PER_BATCH);
@@ -229,11 +243,27 @@ export function createLlmGateway(config, deps = {}) {
           const res = await callModel(model, batch, { scanLeft, ip, ownerKey, plan });
           if (res.kind !== 'ok') {
             const st =
-              res.kind === 'over-budget' || res.kind === 'ceiling' || res.kind === 'circuit-open' ? res.kind : 'error';
-            for (const t of batch) results.set(t.key, { text: null, confidence: 'low', status: st });
+              res.kind === 'over-budget' || res.kind === 'ceiling' || res.kind === 'circuit-open'
+                ? res.kind
+                : 'error';
+            for (const t of batch)
+              results.set(t.key, { text: null, confidence: 'low', status: st });
             continue;
           }
-          const ok = parseItems(res.text, batch);
+          let ok = parseItems(res.text, batch);
+          if (ok.length < batch.length && scanLeft.tokens > 0) {
+            const repair = await callModel(model, batch, {
+              scanLeft,
+              ip,
+              ownerKey,
+              plan,
+              repairJson: true,
+            });
+            if (repair.kind === 'ok') {
+              const repaired = parseItems(repair.text, batch);
+              ok = [...new Map([...ok, ...repaired].map((item) => [item.key, item])).values()];
+            }
+          }
           const byKey = new Map(ok.map((i) => [i.key, i]));
           const retry = [];
           for (const t of batch) {
@@ -257,7 +287,10 @@ export function createLlmGateway(config, deps = {}) {
             for (const { t, item } of retry) {
               const better = second.get(t.key) ?? item;
               if (better?.text) {
-                cache.set(t.key, { text: better.text, confidence: better.confidence ?? item.confidence });
+                cache.set(t.key, {
+                  text: better.text,
+                  confidence: better.confidence ?? item.confidence,
+                });
                 results.set(t.key, {
                   text: better.text,
                   confidence: better.confidence ?? item.confidence,
@@ -284,7 +317,9 @@ export function createLlmGateway(config, deps = {}) {
       model: provider.enabled ? cheap : null,
       dedupedItems,
       cacheHits: [...results.values()].filter((r) => r.status === 'cached').length,
-      budgetExhausted: [...results.values()].some((r) => r.status === 'over-budget' || r.status === 'ceiling'),
+      budgetExhausted: [...results.values()].some(
+        (r) => r.status === 'over-budget' || r.status === 'ceiling',
+      ),
       circuitOpen: status() === 'circuit-open',
       used: used.length,
       usage: {
@@ -313,7 +348,10 @@ export function createLlmGateway(config, deps = {}) {
       completionTokens: totals.completionTokens,
       totalTokens: total,
       cacheHits: totals.cacheHits,
-      estimatedCostUsd: config.LLM_PRICE_INPUT_PER_M || config.LLM_PRICE_OUTPUT_PER_M ? totals.estimatedCostUsd : null,
+      estimatedCostUsd:
+        config.LLM_PRICE_INPUT_PER_M || config.LLM_PRICE_OUTPUT_PER_M
+          ? totals.estimatedCostUsd
+          : null,
       budget: config.LLM_TOKEN_BUDGET_PER_SCAN,
       budgetExhausted: extra.budgetExhausted ?? false,
       deterministicFixes: extra.deterministicFixes ?? totals.deterministicFixes,
@@ -344,8 +382,11 @@ export function createLlmGateway(config, deps = {}) {
   };
 }
 
-function userContent(items) {
-  const text = userPrompt(items);
+function userContent(items, repairJson = false) {
+  const prompt = userPrompt(items);
+  const text = repairJson
+    ? `${prompt}\nYour prior response failed JSON/schema validation. Return one valid JSON object matching the required schema. Do not add prose.`
+    : prompt;
   const images = items.filter((t) => t.image).slice(0, MAX_VISION_PER_BATCH);
   if (!images.length) return text;
   return [

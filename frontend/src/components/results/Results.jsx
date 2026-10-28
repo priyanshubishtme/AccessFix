@@ -39,10 +39,6 @@ function ScoreCard({ scan, verification, headingRef, repairs }) {
       ? (scan.page?.finalUrl ?? scan.input.url)
       : `Pasted HTML (${(scan.input.bytes / 1024).toFixed(1)} KB)`;
   const issues = groupByRule(scan.violations).length;
-  const byImpact = scan.violations.reduce((acc, item) => {
-    acc[item.impact] = (acc[item.impact] ?? 0) + 1;
-    return acc;
-  }, {});
   const people = scan.manualReview.length;
   const peopleLine =
     people === 1 ? '1 needs a person to check' : `${people} need a person to check`;
@@ -87,19 +83,9 @@ function ScoreCard({ scan, verification, headingRef, repairs }) {
               ({plural(scan.violations.length, 'failing element')})
             </span>
           </p>
-          <ul
-            className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4"
-            aria-label="Issues by severity"
-          >
-            {SEVERITIES.map((item) => (
-              <li key={item.value} className="bg-background px-3 py-2.5">
-                <span className="block text-xs text-muted-foreground">{item.label}</span>
-                <span className="tabular block text-xl font-semibold">
-                  {byImpact[item.value] ?? 0}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Severity counts are shown in the sticky summary above.
+          </p>
           <p className="mt-4 max-w-[65ch] text-sm leading-6">
             {proposed.length === 0
               ? `${peopleLine}. Suggest fixes to see how many can be applied automatically.`
@@ -139,6 +125,7 @@ function ScoreCard({ scan, verification, headingRef, repairs }) {
 
 function StickyScoreSummary({ scan, verification, repairs }) {
   const score = verification?.after ?? scan.score;
+  const band = bandOf(score?.value);
   const proposed = repairs?.repairs ?? [];
   const automatic = proposed.filter(
     (item) => item.strategy === 'deterministic' && item.status !== 'manual-review',
@@ -156,7 +143,7 @@ function StickyScoreSummary({ scan, verification, repairs }) {
         <div
           role="img"
           aria-label={`Accessibility score ${score?.value ?? 'not available'} out of 100`}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full border-[3px] border-primary text-base font-semibold tabular-nums"
+          className={`flex size-11 shrink-0 items-center justify-center rounded-full border-[3px] border-current text-base font-semibold tabular-nums ${band.className}`}
         >
           {score?.value ?? '—'}
         </div>
@@ -173,7 +160,13 @@ function StickyScoreSummary({ scan, verification, repairs }) {
           ))}
         </ul>
         <div className="flex w-full flex-wrap gap-x-4 gap-y-1 border-t pt-1 text-sm sm:w-auto sm:border-0 sm:pt-0">
-          <span>{proposed.length > 0 ? automatic : '—'} fixable automatically</span>
+          <span>
+            {repairs.phase === 'idle'
+              ? 'Run Suggest fixes to find out'
+              : repairs.phase === 'proposing'
+                ? 'Finding automatic fixes…'
+                : `${automatic} fixable automatically`}
+          </span>
           <span>{scan.manualReview.length} need review</span>
         </div>
       </div>
@@ -355,7 +348,7 @@ function SectionNav({ items }) {
   return (
     <nav
       aria-label="Result sections"
-      className="sticky top-16 z-30 -mx-4 border-b bg-background/95 px-4 py-2 lg:top-24 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
+      className="-mx-4 border-b bg-background/95 px-4 py-2 lg:sticky lg:top-36 lg:z-30 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
     >
       <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-0.5">
         {items.map((item) => (
@@ -582,7 +575,7 @@ export function Results({ scan, health = null, onNewScan }) {
       <div className="lg:grid lg:grid-cols-[12.5rem_minmax(0,1fr)] lg:items-start lg:gap-8">
         <SectionNav items={nav} />
         <div className="mt-6 min-w-0 space-y-6 lg:mt-0">
-          <div className="xl:grid xl:grid-cols-[minmax(0,1.3fr)_minmax(22rem,0.9fr)] xl:items-start xl:gap-6">
+          <div className="xl:grid xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)] xl:items-start xl:gap-6">
             {visualOn && (
               <Workbench
                 scan={{ ...scan, shots: freshShots ?? scan.shots }}
@@ -595,7 +588,7 @@ export function Results({ scan, health = null, onNewScan }) {
             )}
             <div
               id="issues-pane"
-              className="mt-6 min-w-0 rounded-xl border bg-surface p-5 xl:sticky xl:top-24 xl:mt-0 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto"
+              className="mt-6 min-w-0 rounded-xl border bg-surface p-5 xl:mt-0"
             >
               <IssueSections
                 groups={groups}

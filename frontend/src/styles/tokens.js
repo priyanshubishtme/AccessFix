@@ -4,7 +4,7 @@
  * WCAG AA. See docs/08-ux-spec.md#design-tokens.
  *
  * Palette values are adapted from the supplied AccessFix page screenshots.
- * Brand crimson is kept on actions; links and small text use accessible variants.
+ * Blue is the action accent; red is reserved for critical states and errors.
  */
 export const TOKENS = {
   light: {
@@ -13,7 +13,7 @@ export const TOKENS = {
     raised: '#f0eff2',
     foreground: '#17161a',
     'muted-foreground': '#55545c',
-    primary: '#b90f32',
+    primary: '#1d4ed8',
     'primary-foreground': '#ffffff',
     link: '#1d4ed8',
     border: '#d5d3d9',
@@ -31,7 +31,7 @@ export const TOKENS = {
     raised: '#1b1a20',
     foreground: '#f6f5f7',
     'muted-foreground': '#b8b6bf',
-    primary: '#cf1237',
+    primary: '#405dcc',
     'primary-foreground': '#ffffff',
     link: '#9bbcff',
     border: '#39373e',
@@ -58,6 +58,7 @@ export const FOUNDATION_TOKENS = {
   'type-4xl': '2.25rem',
   'type-display': 'clamp(2.5rem, 5vw, 4.5rem)',
   'font-family-sans': "'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  'font-family-headline': "'DM Sans Variable', 'Inter Variable', system-ui, sans-serif",
   'font-family-mono': "ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace",
   'line-length': '72ch',
   'radius-control': '0.375rem',

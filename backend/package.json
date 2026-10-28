@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --exclude tests/browser/**",
     "test:browser": "vitest run tests/browser",
+    "test:mongo": "vitest run tests/repositories.contract.test.js tests/mongo.integration.test.js",
     "test:watch": "vitest"
   },
   "dependencies": {

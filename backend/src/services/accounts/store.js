@@ -20,7 +20,7 @@ function shareHash(raw) {
  *
  * @param {{ uri?: string, ttlDays?: number }} [opts]
  */
-export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
+export function createAccountStore({ uri = '', ttlDays = 30, maxPoolSize = 10, serverSelectionTimeoutMS = 5000 } = {}) {
   const users = new Map();
   const sessions = new Map();
   const shares = new Map();
@@ -35,22 +35,33 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
 
   const ready = uri
     ? (async () => {
-        client = new MongoClient(uri);
-        await client.connect();
+        client = new MongoClient(uri, { maxPoolSize, serverSelectionTimeoutMS });
+        await client.connect().catch((err) => {
+          throw new Error(`MongoDB account store connection failed; check MONGODB_URI and Atlas network access: ${err.message}`, { cause: err });
+        });
         db = client.db();
-        const ttl = Math.max(60, Math.round(ttlDays * 24 * 60 * 60));
         await Promise.all([
+          db.collection('users').createIndex({ id: 1 }, { unique: true }),
           db.collection('users').createIndex({ email: 1 }, { unique: true }),
           db.collection('sessions').createIndex({ token: 1 }, { unique: true }),
           db.collection('sessions').createIndex({ _expireAt: 1 }, { expireAfterSeconds: 0 }),
           db.collection('shares').createIndex({ hash: 1 }, { unique: true }),
+          db.collection('shares').createIndex({ _expireAt: 1 }, { expireAfterSeconds: 0 }),
           db.collection('secrets').createIndex({ scanId: 1 }, { unique: true }),
           db.collection('secrets').createIndex({ _expireAt: 1 }, { expireAfterSeconds: 0 }),
           db.collection('counters').createIndex({ key: 1 }, { unique: true }),
           db.collection('windows').createIndex({ key: 1 }, { unique: true }),
           db.collection('projects').createIndex({ userId: 1 }),
         ]);
-        void ttl;
+        await db.collection('_schemaMigrations').createIndex({ id: 1 }, { unique: true });
+        for (const name of ['users', 'sessions', 'shares', 'secrets', 'counters', 'windows', 'projects']) {
+          await db.collection(name).updateMany({ schemaVersion: { $exists: false } }, { $set: { schemaVersion: 1 } });
+        }
+        await db.collection('_schemaMigrations').updateOne({ id: 'accounts-v1' }, { $set: { id: 'accounts-v1', schemaVersion: 1, appliedAt: new Date() } }, { upsert: true });
+        await db.collection('shares').updateMany(
+          { expiresAt: { $exists: true }, _expireAt: { $exists: false } },
+          [{ $set: { _expireAt: { $toDate: '$expiresAt' } } }],
+        );
         return db;
       })()
     : Promise.resolve(null);
@@ -77,8 +88,9 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
         plan,
         scanIds: [],
         createdAt: new Date().toISOString(),
+        schemaVersion: 1,
       };
-      const project = { id: `p_${nanoid(12)}`, userId: user.id, name: 'Personal' };
+      const project = { id: `p_${nanoid(12)}`, userId: user.id, name: 'Personal', schemaVersion: 1 };
       users.set(user.email, user);
       projects.set(project.id, project);
       const c = await col('users');
@@ -116,11 +128,11 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
     async createSession(userId) {
       const user = [...users.values()].find((u) => u.id === userId);
       const raw = token();
-      const row = { token: raw, userId, createdAt: Date.now() };
+      const row = { token: raw, userId, createdAt: Date.now(), schemaVersion: 1 };
       sessions.set(raw, row);
       const c = await col('sessions');
       if (c) {
-        await c.insertOne({ ...row, _expireAt: new Date(Date.now() + 14 * 24 * HOUR) });
+        await c.insertOne({ ...row, _expireAt: new Date(Date.now() + Math.min(14, ttlDays) * 24 * HOUR) });
       }
       return { token: raw, user };
     },
@@ -203,10 +215,10 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
 
     async createShare({ scanId, userId, expiresAt }) {
       const raw = nanoid(32);
-      const row = { hash: shareHash(raw), scanId, userId, expiresAt, revoked: false };
+      const row = { hash: shareHash(raw), scanId, userId, expiresAt, revoked: false, schemaVersion: 1 };
       shares.set(row.hash, row);
       const c = await col('shares');
-      if (c) await c.insertOne(row);
+      if (c) await c.insertOne({ ...row, _expireAt: new Date(expiresAt) });
       return raw;
     },
 
@@ -217,7 +229,7 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
         const c = await col('shares');
         if (c) row = await c.findOne({ hash });
       }
-      if (!row || row.revoked) return null;
+      if (!row || row.revoked || (row.expiresAt && Date.parse(row.expiresAt) <= Date.now())) return null;
       return { scanId: row.scanId, userId: row.userId, expiresAt: row.expiresAt ?? null, revoked: false };
     },
 
@@ -281,7 +293,7 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
       if (c) {
         const raw = await c.findOneAndUpdate(
           { key },
-          { $inc: { n }, $setOnInsert: { key } },
+          { $inc: { n }, $setOnInsert: { key, schemaVersion: 1 } },
           { upsert: true, returnDocument: 'after' },
         );
         const doc = raw && typeof raw === 'object' && 'value' in raw && !('n' in raw) ? raw.value : raw;
@@ -304,7 +316,7 @@ export function createAccountStore({ uri = '', ttlDays = 30 } = {}) {
     },
 
     async putSecret(scanId, blob, expiresAt) {
-      const row = { scanId, blob, expiresAt };
+      const row = { scanId, blob, expiresAt, schemaVersion: 1 };
       secrets.set(scanId, row);
       const c = await col('secrets');
       if (c) await c.replaceOne({ scanId }, { ...row, _expireAt: new Date(expiresAt) }, { upsert: true });

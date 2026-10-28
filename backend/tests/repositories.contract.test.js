@@ -8,6 +8,8 @@ const scan = (id) => ({
   inputHash: 'a'.repeat(64),
   status: 'queued',
   results: [{ x: 1 }],
+  pages: [{ url: 'https://example.test/', depth: 0, status: 'completed', findings: ['a'] }],
+  discoveryLog: [{ url: 'https://example.test/', depth: 0, linkedFrom: null, status: 'seed', reason: null }],
   createdAt: new Date().toISOString(),
 });
 
@@ -73,6 +75,22 @@ describe.each(adapters)('%s repository', (name, make) => {
     await repo.recordUsage({ scanId: 's1', kind: 'scan', at: new Date().toISOString() });
     expect((await repo.usageSummary()).scans).toBeGreaterThanOrEqual(1);
   });
+
+  it('stores crawl pages and discovery entries through the scan contract', async () => {
+    await repo.ready;
+    await repo.saveScan(scan('s-crawl'));
+    expect(await repo.getScan('s-crawl')).toMatchObject({ pages: [{ url: 'https://example.test/' }], discoveryLog: [{ status: 'seed' }] });
+    await repo.updateScan('s-crawl', { pages: [{ url: 'https://example.test/a', depth: 1, status: 'skipped', reason: 'robots' }] });
+    expect(await repo.getScan('s-crawl')).toMatchObject({ pages: [{ url: 'https://example.test/a', status: 'skipped' }] });
+  });
+
+  if (name === 'mongo') {
+    it('does not persist patched HTML in verification records', async () => {
+      await repo.ready;
+      await repo.saveVerification({ id: 'v1', scanId: 's1', patchedHtml: '<html>private source</html>', pageFiles: [{ url: 'https://example.test/', html: '<html>private page</html>' }] });
+      expect(await repo.listVerifications('s1')).toEqual([{ id: 'v1', scanId: 's1', pageFiles: [{ url: 'https://example.test/' }] }]);
+    });
+  }
 
   if (name === 'memory') {
     it('evicts the least recently used scan past the cap', async () => {

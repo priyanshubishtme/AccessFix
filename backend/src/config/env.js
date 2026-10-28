@@ -51,6 +51,8 @@ const EnvSchema = z.object({
 
   STORE: z.enum(['memory', 'mongo']).default('memory'),
   MONGODB_URI: z.string().default(''),
+  MONGODB_MAX_POOL_SIZE: z.coerce.number().int().positive().max(100).default(10),
+  MONGODB_SERVER_SELECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   /** Shared report links and stored scans expire after this many days. */
   SCAN_TTL_DAYS: z.coerce.number().int().positive().default(30),
 

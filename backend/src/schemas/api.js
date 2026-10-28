@@ -122,6 +122,7 @@ export const HealthResponse = z.object({
   checks: z.object({
     browser: z.enum(['up', 'down', 'unknown']),
     store: z.enum(['memory', 'mongo']),
+    storeStatus: z.enum(['up', 'down']).optional(),
     llm: z.enum(['off', 'on', 'circuit-open']),
   }),
   quotas: z.enum(['on', 'off']),

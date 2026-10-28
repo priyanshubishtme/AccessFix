@@ -12,6 +12,8 @@ export function createRepository(config, logger) {
     return createMongoScanRepository({
       uri: config.MONGODB_URI,
       ttlDays: config.SCAN_TTL_DAYS ?? 30,
+      maxPoolSize: config.MONGODB_MAX_POOL_SIZE ?? 10,
+      serverSelectionTimeoutMS: config.MONGODB_SERVER_SELECTION_TIMEOUT_MS ?? 5000,
     });
   }
   return createMemoryScanRepository({

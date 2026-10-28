@@ -31,6 +31,7 @@ export function createMemoryScanRepository({ maxScans = 200, ttlMs = 30 * 24 * 6
 
   return {
     kind: 'memory',
+    async ping() { return 'up'; },
 
     async saveScan(scan) {
       touch(scan.id, structuredClone(scan));

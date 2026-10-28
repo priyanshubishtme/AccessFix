@@ -15,6 +15,7 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev -w backend\" \"npm:dev -w frontend\"",
     "build": "npm run build -w frontend",
     "test": "npm run test --workspaces --if-present",
+    "test:mongo": "npm run test:mongo --workspace backend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

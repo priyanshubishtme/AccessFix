@@ -37,7 +37,12 @@ export function createApp(config, overrides = {}) {
   const logger = overrides.logger ?? createLogger(config);
   const scanner = overrides.scanner ?? createScanner(config, { logger, lookup: overrides.lookup });
   const repo = overrides.repo ?? createRepository(config, logger);
-  const accounts = overrides.accounts ?? createAccountStore({ uri: config.STORE === 'mongo' ? config.MONGODB_URI : '' });
+  const accounts = overrides.accounts ?? createAccountStore({
+    uri: config.STORE === 'mongo' ? config.MONGODB_URI : '',
+    ttlDays: config.SCAN_TTL_DAYS,
+    maxPoolSize: config.MONGODB_MAX_POOL_SIZE,
+    serverSelectionTimeoutMS: config.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+  });
   const meter =
     overrides.meter ??
     createMeter({

@@ -19,6 +19,7 @@ async function shutdown() {
   await app.locals.orchestrator.idle();
   await app.locals.scanner.close();
   await app.locals.repo?.close?.();
+  await app.locals.accounts?.close?.();
   process.exit(0);
 }
 

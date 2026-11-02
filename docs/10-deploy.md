@@ -20,8 +20,9 @@ Create a Render **Static Site** from the same repository:
 | Build command | `npm ci && npm run build -w frontend` |
 | Publish directory | `frontend/dist` |
 | Environment | `VITE_API_BASE_URL=https://<api-service>.onrender.com` |
+| Environment | `VITE_PUBLIC_APP_URL=https://<public-ui-domain>` |
 
-Set `VITE_API_BASE_URL` before building; it is public client configuration, never a secret. Add an SPA rewrite `/*` → `/index.html` so routes such as `/history` load directly. Render documents static-site rewrites as serving a path or static destination at the original URL; that is not a reverse proxy to a separate web service. Use a separate API origin and set `CORS_ORIGINS` to the exact UI origin. A same-origin `/api` setup requires an external reverse proxy or a host feature that explicitly proxies requests to another service; do not configure a Render static rewrite as if it were one. See [Static Sites](https://render.com/docs/static-sites) and [Redirects and Rewrites](https://render.com/docs/redirects-rewrites).
+Set `VITE_API_BASE_URL` and `VITE_PUBLIC_APP_URL` before building; these are public client configuration, never secrets. The public URL is used when creating report share links. Add an SPA rewrite `/*` → `/index.html` so routes such as `/history` load directly. Render documents static-site rewrites as serving a path or static destination at the original URL; that is not a reverse proxy to a separate web service. Use a separate API origin and set `CORS_ORIGINS` to the exact UI origin. A same-origin `/api` setup requires an external reverse proxy or a host feature that explicitly proxies requests to another service; do not configure a Render static rewrite as if it were one. See [Static Sites](https://render.com/docs/static-sites) and [Redirects and Rewrites](https://render.com/docs/redirects-rewrites).
 
 ### Environment variables
 

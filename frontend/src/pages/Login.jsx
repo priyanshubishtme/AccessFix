@@ -80,8 +80,8 @@ export function Login({ mode = 'login' }) {
           </h1>
           <p className="mt-2 text-base leading-7 text-muted-foreground">
             {signupMode
-              ? 'An account keeps your scans in Projects, unlocks crawls and login-state scans, and lets you share reports.'
-              : 'Sign in to see your projects, crawl a site and share reports.'}
+              ? 'Save scans, crawl sites, and share reports.'
+              : 'Access your saved scans and reports.'}
           </p>
           {!signupMode && new URLSearchParams(window.location.search).has('expired') && (
             <p role="status" className="mt-4 rounded-md border border-moderate p-3 text-sm">
@@ -153,8 +153,7 @@ export function Login({ mode = 'login' }) {
                 </button>
               </div>
               <p id={`${uid}-hint`} className="mt-2 text-base leading-7 text-muted-foreground">
-                At least {MIN_PASSWORD} characters. There is no password reset yet, so keep it
-                somewhere safe.
+                At least {MIN_PASSWORD} characters.
               </p>
             </div>
             {error && (
@@ -175,7 +174,7 @@ export function Login({ mode = 'login' }) {
           </form>
           {!signupMode && (
             <p className="mt-3 text-sm text-muted-foreground">
-              Forgot password? Not available yet. There is no password reset or email verification.
+              Password reset is not available yet.
             </p>
           )}
           <p className="mt-6 text-sm">

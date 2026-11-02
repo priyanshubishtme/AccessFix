@@ -42,7 +42,8 @@ export function ReportPage({ id, shareToken }) {
     if (!owned) return copy(window.location.href);
     try {
       const created = await createShare(id);
-      const url = `${window.location.origin}${created.path}`;
+      const publicBase = (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '');
+      const url = `${publicBase}${created.path}`;
       setLink({ url, expiresAt: created.expiresAt });
       await copy(url);
     } catch (err) {

@@ -28,7 +28,7 @@ export function Workbench({
   verification,
   onRescan,
 }) {
-  const [layout, setLayout] = useState('side');
+  const [layout, setLayout] = useState('slider');
   const [split, setSplit] = useState(50);
   const [broken, setBroken] = useState({ before: false, after: false });
   const [showMarks, setShowMarks] = useState(true);

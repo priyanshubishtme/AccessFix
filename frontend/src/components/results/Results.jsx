@@ -575,7 +575,7 @@ export function Results({ scan, health = null, onNewScan }) {
       <div className="lg:grid lg:grid-cols-[12.5rem_minmax(0,1fr)] lg:items-start lg:gap-8">
         <SectionNav items={nav} />
         <div className="mt-6 min-w-0 space-y-6 lg:mt-0">
-          <div className="xl:grid xl:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)] xl:items-start xl:gap-6">
+          <div className="space-y-6">
             {visualOn && (
               <Workbench
                 scan={{ ...scan, shots: freshShots ?? scan.shots }}
@@ -588,7 +588,7 @@ export function Results({ scan, health = null, onNewScan }) {
             )}
             <div
               id="issues-pane"
-              className="mt-6 min-w-0 rounded-xl border bg-surface p-5 xl:mt-0"
+              className="min-w-0 rounded-xl border bg-surface p-5"
             >
               <IssueSections
                 groups={groups}
@@ -652,7 +652,7 @@ export function Results({ scan, health = null, onNewScan }) {
           </SecondaryDisclosure>
 
           <SecondaryDisclosure title="Patched code">
-            <PatchedCode scanId={scan.id} verification={repairs.verification} visual={visualOn} />
+            <PatchedCode scanId={scan.id} verification={repairs.verification} visual={visualOn} scan={scan} />
           </SecondaryDisclosure>
           {crawled && (
             <SecondaryDisclosure title={`Pages crawled (${scan.pages.length})`}>
